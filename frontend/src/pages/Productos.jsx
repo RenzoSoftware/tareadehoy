@@ -45,7 +45,7 @@ const Productos = () => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código/ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Laboratorio</th>
@@ -55,17 +55,17 @@ const Productos = () => {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {productos.map((p) => (
-                <tr key={p.ID_Producto} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-mono text-gray-600">{p.Codigo_Producto || 'N/A'}</td>
+                <tr key={p.id_producto} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm font-mono text-gray-600">#{p.id_producto}</td>
                   <td className="px-6 py-4">
-                    <div className="text-sm font-bold text-gray-900">{p.Nombre_Producto}</div>
-                    <div className="text-xs text-gray-500">{p.Nombre_Presentacion}</div>
+                    <div className="text-sm font-bold text-gray-900">{p.nombre_comercial}</div>
+                    <div className="text-xs text-gray-500">{p.principio_activo}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{p.Nombre_Categoria}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{p.Nombre_Laboratorio}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{p.nombre_categoria}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{p.nombre_laboratorio}</td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${p.Stock < 10 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                      {p.Stock} {p.Nombre_Unidad}
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${p.stock_actual_unidades < p.stock_minimo_unidades ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                      {p.stock_actual_unidades} Und.
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right flex justify-end gap-2">

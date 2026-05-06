@@ -4,16 +4,17 @@ const db = require('../db');
 
 // Listar clientes
 router.get('/', (req, res) => {
-  db.query('SELECT * FROM Clientes', (err, results) => {
+  db.query('SELECT * FROM clientes', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
 });
 
-// Buscar cliente por documento
+// Buscar cliente por número de documento
 router.get('/buscar/:documento', (req, res) => {
   const { documento } = req.params;
-  db.query('SELECT * FROM Clientes WHERE Numero_Documento = ?', [documento], (err, results) => {
+  const query = 'SELECT * FROM clientes WHERE numero_documento = ?';
+  db.query(query, [documento], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     if (results.length > 0) {
       res.json(results[0]);
@@ -25,12 +26,12 @@ router.get('/buscar/:documento', (req, res) => {
 
 // Registrar cliente
 router.post('/', (req, res) => {
-  const { nombre, tipo_doc, num_doc, direccion, telefono } = req.body;
-  const query = 'INSERT INTO Clientes (Nombre_Cliente, Tipo_Documento, Numero_Documento, Direccion, Telefono) VALUES (?, ?, ?, ?, ?)';
+  const { nombre, num_doc } = req.body;
+  const query = 'INSERT INTO clientes (nombres_razon_social, numero_documento) VALUES (?, ?)';
   
-  db.query(query, [nombre, tipo_doc, num_doc, direccion, telefono], (err, results) => {
+  db.query(query, [nombre, num_doc], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, id: results.insertId });
+    res.json({ success: true, id_cliente: results.insertId });
   });
 });
 

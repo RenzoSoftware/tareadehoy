@@ -36,27 +36,23 @@ const Ventas = ({ user }) => {
     }
   };
 
-  const agregarAlCarrito = (producto, unidad) => {
-    let precio = producto.Precio_Unidad;
-    if (unidad === 'Blister') precio = producto.Precio_Blister;
-    if (unidad === 'Caja') precio = producto.Precio_Caja;
-
-    const itemExistente = carrito.find(item => item.ID_Producto === producto.ID_Producto && item.unidad === unidad);
+  const agregarAlCarrito = (producto) => {
+    const itemExistente = carrito.find(item => item.id_producto === producto.id_producto);
     
     if (itemExistente) {
       setCarrito(carrito.map(item => 
-        (item.ID_Producto === producto.ID_Producto && item.unidad === unidad)
-          ? { ...item, cantidad: item.cantidad + 1, subtotal: (item.cantidad + 1) * precio }
+        (item.id_producto === producto.id_producto)
+          ? { ...item, cantidad: item.cantidad + 1, subtotal: (item.cantidad + 1) * item.precio_unitario }
           : item
       ));
     } else {
       setCarrito([...carrito, {
-        ID_Producto: producto.ID_Producto,
-        Nombre_Producto: producto.Nombre_Producto,
-        unidad,
-        precio,
+        id_producto: producto.id_producto,
+        id_producto_precio: producto.id_producto_precio || null,
+        nombre_comercial: producto.nombre_comercial,
+        precio_unitario: producto.precio_unitario || 0,
         cantidad: 1,
-        subtotal: precio
+        subtotal: producto.precio_unitario || 0
       }]);
     }
     setSearchTerm('');
@@ -67,9 +63,7 @@ const Ventas = ({ user }) => {
     setCarrito(carrito.filter((_, i) => i !== index));
   };
 
-  const subtotal = carrito.reduce((acc, item) => acc + item.subtotal, 0);
-  const igv = subtotal * 0.18;
-  const total = subtotal + igv;
+  const total = carrito.reduce((acc, item) => acc + item.subtotal, 0);
 
   const guardarVenta = async () => {
     if (!cliente) return alert('Seleccione un cliente');
@@ -77,16 +71,17 @@ const Ventas = ({ user }) => {
 
     try {
       const data = {
-        id_cliente: cliente.ID_Cliente,
-        id_usuario: user.ID_Usuario,
+        id_cliente: cliente.id_cliente,
+        id_usuario: user.id_usuario,
         id_tipo_comprobante: tipoComp,
-        subtotal,
-        igv,
+        serie_documento: 'F001', // Valor por defecto para prueba
+        numero_documento: '000001', // Valor por defecto para prueba
         total,
         detalle: carrito.map(item => ({
-          id_producto: item.ID_Producto,
+          id_producto: item.id_producto,
+          id_producto_precio: item.id_producto_precio,
           cantidad: item.cantidad,
-          precio: item.precio,
+          precio_unitario: item.precio_unitario,
           subtotal: item.subtotal
         }))
       };
@@ -105,7 +100,6 @@ const Ventas = ({ user }) => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Columna Izquierda: Formulario */}
       <div className="lg:col-span-2 space-y-6">
-        {/* Comprobante y Cliente */}
         <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -115,7 +109,7 @@ const Ventas = ({ user }) => {
                 value={tipoComp}
                 onChange={(e) => setTipoComp(e.target.value)}
               >
-                {comprobantes.map(c => <option key={c.ID_Tipo_Comprobante} value={c.ID_Tipo_Comprobante}>{c.Nombre_Comprobante}</option>)}
+                {comprobantes.map(c => <option key={c.id_tipo_comprobante} value={c.id_tipo_comprobante}>{c.nombre_documento}</option>)}
               </select>
             </div>
             <div>
@@ -133,20 +127,19 @@ const Ventas = ({ user }) => {
           </div>
           {cliente && (
             <div className="p-3 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <p className="text-sm font-bold text-botica-dark">{cliente.Nombre_Cliente}</p>
-              <p className="text-xs text-gray-500">{cliente.Direccion}</p>
+              <p className="text-sm font-bold text-botica-dark">{cliente.nombres_razon_social}</p>
+              <p className="text-xs text-gray-500">Doc: {cliente.numero_documento}</p>
             </div>
           )}
         </div>
 
-        {/* Buscador de Productos */}
         <div className="bg-white p-6 rounded-xl shadow-sm relative">
           <label className="block text-sm font-medium mb-2">Buscar Producto</label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
-              placeholder="Nombre o código de producto..."
+              placeholder="Nombre del producto..."
               className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-botica-green"
               value={searchTerm}
               onChange={(e) => buscarProductos(e.target.value)}
@@ -156,29 +149,25 @@ const Ventas = ({ user }) => {
           {productosBusqueda.length > 0 && (
             <div className="absolute left-6 right-6 mt-1 bg-white border rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
               {productosBusqueda.map(p => (
-                <div key={p.ID_Producto} className="p-3 border-b hover:bg-gray-50 flex items-center justify-between">
+                <div key={p.id_producto} className="p-3 border-b hover:bg-gray-50 flex items-center justify-between">
                   <div>
-                    <p className="font-bold">{p.Nombre_Producto}</p>
-                    <p className="text-xs text-gray-500">Stock: {p.Stock}</p>
+                    <p className="font-bold">{p.nombre_comercial}</p>
+                    <p className="text-xs text-gray-500">Stock: {p.stock_actual_unidades}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => agregarAlCarrito(p, 'Unidad')} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-botica-green hover:text-white">Unidad: S/{p.Precio_Unidad}</button>
-                    <button onClick={() => agregarAlCarrito(p, 'Blister')} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-botica-green hover:text-white">Blíster: S/{p.Precio_Blister}</button>
-                    <button onClick={() => agregarAlCarrito(p, 'Caja')} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-botica-green hover:text-white">Caja: S/{p.Precio_Caja}</button>
-                  </div>
+                  <button onClick={() => agregarAlCarrito(p)} className="bg-botica-green text-white px-3 py-1 rounded-lg text-sm">
+                    S/ {p.precio_unitario || '0.00'}
+                  </button>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Detalle de Venta */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unidad</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Precio</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Cant.</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
@@ -188,9 +177,8 @@ const Ventas = ({ user }) => {
             <tbody className="divide-y divide-gray-200">
               {carrito.map((item, index) => (
                 <tr key={index}>
-                  <td className="px-6 py-4 text-sm font-medium">{item.Nombre_Producto}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{item.unidad}</td>
-                  <td className="px-6 py-4 text-sm text-right">S/ {item.precio.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-sm font-medium">{item.nombre_comercial}</td>
+                  <td className="px-6 py-4 text-sm text-right">S/ {item.precio_unitario.toFixed(2)}</td>
                   <td className="px-6 py-4 text-sm text-center">{item.cantidad}</td>
                   <td className="px-6 py-4 text-sm text-right font-bold">S/ {item.subtotal.toFixed(2)}</td>
                   <td className="px-6 py-4 text-right">
@@ -200,7 +188,7 @@ const Ventas = ({ user }) => {
               ))}
               {carrito.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-6 py-10 text-center text-gray-400 italic">No hay productos en el detalle</td>
+                  <td colSpan="5" className="px-6 py-10 text-center text-gray-400 italic">No hay productos en el detalle</td>
                 </tr>
               )}
             </tbody>
@@ -208,23 +196,12 @@ const Ventas = ({ user }) => {
         </div>
       </div>
 
-      {/* Columna Derecha: Resumen */}
       <div className="space-y-6">
         <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
-          <h3 className="text-lg font-bold border-b pb-2">Resumen de Venta</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal:</span>
-              <span>S/ {subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>IGV (18%):</span>
-              <span>S/ {igv.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xl font-bold text-botica-dark border-t pt-2">
-              <span>Total:</span>
-              <span>S/ {total.toFixed(2)}</span>
-            </div>
+          <h3 className="text-lg font-bold border-b pb-2">Resumen</h3>
+          <div className="flex justify-between text-2xl font-bold text-botica-dark pt-2">
+            <span>Total:</span>
+            <span>S/ {total.toFixed(2)}</span>
           </div>
           <button 
             onClick={guardarVenta}
@@ -233,13 +210,6 @@ const Ventas = ({ user }) => {
             <Save size={20} />
             FINALIZAR VENTA
           </button>
-        </div>
-        
-        <div className="bg-green-50 p-4 rounded-xl border border-green-100">
-          <h4 className="font-bold text-green-800 mb-2 flex items-center gap-2">
-            <UserPlus size={18}/> Acciones Rápidas
-          </h4>
-          <button className="text-sm text-green-700 hover:underline">Registrar nuevo cliente</button>
         </div>
       </div>
     </div>
