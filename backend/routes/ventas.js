@@ -4,10 +4,36 @@ const db = require('../db');
 
 // Resumen de ventas del día
 router.get('/resumen-hoy', (req, res) => {
-  const query = 'SELECT SUM(total) as totalVentas, COUNT(*) as cantidadVentas FROM ventas WHERE DATE(fecha_hora) = CURDATE()';
+  const query = 'SELECT SUM(total) as totalVentas, COUNT(*) as cantidadVentas FROM Ventas WHERE DATE(fecha_hora) = CURDATE() AND estado = "ACTIVA"';
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results[0]);
+  });
+});
+
+// Top 5 productos más vendidos con rango de días configurable
+router.get('/top-vendidos', (req, res) => {
+  const { dias = 30 } = req.query;
+  const query = `
+    SELECT 
+      p.nombre_comercial,
+      SUM(dv.cantidad) as total_vendido
+    FROM Detalle_Ventas dv
+    JOIN Productos p ON dv.id_producto = p.id_producto
+    JOIN Ventas v ON dv.id_venta = v.id_venta
+    WHERE v.fecha_hora >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+      AND v.estado = 'ACTIVA'
+    GROUP BY p.id_producto
+    ORDER BY total_vendido DESC
+    LIMIT 5
+  `;
+  
+  db.query(query, [parseInt(dias)], (err, results) => {
+    if (err) {
+      console.error('Error al obtener top vendidos:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(results);
   });
 });
 

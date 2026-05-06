@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * @fileoverview App - Raíz de la aplicación
+ * Integra ThemeProvider, UserProvider, Router y layout principal.
+ */
+
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -7,9 +12,45 @@ import Productos from './pages/Productos';
 import Clientes from './pages/Clientes';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
+// ── Layout autenticado ──────────────────────────────────────────
+const AppLayout = ({ user, onLogout }) => {
+  const { isDark } = useTheme();
+
+  return (
+    <Router>
+      <div
+        className="flex h-screen overflow-hidden font-sans transition-colors duration-200"
+        style={{ backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }}
+      >
+        <Sidebar onLogout={onLogout} user={user} />
+        <div className="flex-1 flex flex-col min-w-0">
+          <Navbar user={user} />
+          <main
+            className="flex-1 overflow-y-auto p-6 custom-scrollbar transition-colors duration-200"
+            style={{ backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }}
+          >
+            <Routes>
+              <Route path="/"          element={<Dashboard />} />
+              <Route path="/ventas"    element={<Ventas user={user} />} />
+              <Route path="/productos" element={<Productos />} />
+              <Route path="/clientes"  element={<Clientes />} />
+              <Route path="*"          element={<Navigate to="/" />} />
+            </Routes>
+          </main>
+        </div>
+      </div>
+    </Router>
+  );
+};
+
+// ── Raíz ────────────────────────────────────────────────────────
 function App() {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user')); }
+    catch { return null; }
+  });
 
   const handleLogin = (userData) => {
     localStorage.setItem('user', JSON.stringify(userData));
@@ -21,28 +62,13 @@ function App() {
     setUser(null);
   };
 
-  if (!user) {
-    return <Login onLogin={handleLogin} />;
-  }
-
   return (
-    <Router>
-      <div className="flex min-h-screen bg-gray-100">
-        <Sidebar onLogout={handleLogout} />
-        <div className="flex-1 flex flex-col">
-          <Navbar user={user} />
-          <main className="p-6">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/ventas" element={<Ventas user={user} />} />
-              <Route path="/productos" element={<Productos />} />
-              <Route path="/clientes" element={<Clientes />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </main>
-        </div>
-      </div>
-    </Router>
+    <ThemeProvider>
+      {!user
+        ? <Login onLogin={handleLogin} />
+        : <AppLayout user={user} onLogout={handleLogout} />
+      }
+    </ThemeProvider>
   );
 }
 

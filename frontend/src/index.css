@@ -2,18 +2,111 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Variables de tema ── */
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --bg:        #F8FAFC;
+  --bg-2:      #E2E8F0;
+  --card:      #FFFFFF;
+  --card-2:    #F1F5F9;
+  --text:      #0F172A;
+  --text-2:    #334155;
+  --muted:     #64748B;
+  --light:     #94A3B8;
+  --border:    #E2E8F0;
+  --primary:   #3B82F6;
+  --primary-d: #1E3A8A;
+  --cyan:      #06B6D4;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+html.dark {
+  --bg:        #0F172A;
+  --bg-2:      #1E293B;
+  --card:      #1E293B;
+  --card-2:    #334155;
+  --text:      #F1F5F9;
+  --text-2:    #CBD5E1;
+  --muted:     #94A3B8;
+  --light:     #64748B;
+  --border:    #334155;
+  --primary:   #60A5FA;
+  --primary-d: #93C5FD;
+  --cyan:      #22D3EE;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-#root {
-  width: 100%;
+#root { width: 100%; height: 100vh; }
+
+/* ── Clases utilitarias de tema ── */
+.theme-bg      { background-color: var(--bg); }
+.theme-bg-2    { background-color: var(--bg-2); }
+.theme-card    { background-color: var(--card); }
+.theme-card-2  { background-color: var(--card-2); }
+.theme-text    { color: var(--text); }
+.theme-text-2  { color: var(--text-2); }
+.theme-muted   { color: var(--muted); }
+.theme-border  { border-color: var(--border); }
+
+/* ── Scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 99px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3B82F6; }
+
+/* ── Animaciones ── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+.animate-in { animation: fade-in 0.3s ease-out both; }
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.slide-in { animation: slide-in 0.25s ease-out both; }
+
+/* ── Modal overlay ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,0.55);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+
+/* ── Focus accesible ── */
+:focus-visible {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Gradiente de texto ── */
+.text-gradient {
+  background: linear-gradient(135deg, #06B6D4, #3B82F6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Reducir movimiento ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Dark mode overrides para clases Tailwind ── */
+html.dark .dark\:bg-slate-800 { background-color: #1E293B; }
+html.dark .dark\:text-slate-100 { color: #F1F5F9; }

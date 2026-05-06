@@ -1,98 +1,130 @@
+/**
+ * @fileoverview Ventas - Punto de venta (POS)
+ *
+ * Usa BuscadorProductos para búsqueda avanzada por nombre y principio activo.
+ * Muestra disponibilidad de stock y precios en el buscador.
+ */
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Plus, Trash2, Save, UserPlus } from 'lucide-react';
+import { Search, Trash2, Save } from 'lucide-react';
+import BuscadorProductos from '../components/BuscadorProductos';
+
+const API_BASE = 'http://localhost:5000/api';
 
 const Ventas = ({ user }) => {
   const [comprobantes, setComprobantes] = useState([]);
-  const [tipoComp, setTipoComp] = useState('1');
-  const [docCliente, setDocCliente] = useState('');
-  const [cliente, setCliente] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [productosBusqueda, setProductosBusqueda] = useState([]);
-  const [carrito, setCarrito] = useState([]);
-  
+  const [tipoComp, setTipoComp]         = useState('1');
+  const [docCliente, setDocCliente]     = useState('');
+  const [cliente, setCliente]           = useState(null);
+  const [carrito, setCarrito]           = useState([]);
+  const [errorMsg, setErrorMsg]         = useState('');
+  const [successMsg, setSuccessMsg]     = useState('');
+
   useEffect(() => {
-    axios.get('http://localhost:5000/api/ventas/comprobantes')
-      .then(res => setComprobantes(res.data));
+    axios.get(`${API_BASE}/ventas/comprobantes`)
+      .then((res) => setComprobantes(res.data))
+      .catch((err) => console.error('Error al cargar comprobantes:', err));
   }, []);
 
   const buscarCliente = async () => {
+    if (!docCliente.trim()) return;
+    setErrorMsg('');
     try {
-      const res = await axios.get(`http://localhost:5000/api/clientes/buscar/${docCliente}`);
+      const res = await axios.get(`${API_BASE}/clientes/buscar/${docCliente.trim()}`);
       setCliente(res.data);
-    } catch (err) {
-      alert('Cliente no encontrado');
+    } catch {
+      setErrorMsg('Cliente no encontrado. Verifique el número de documento.');
       setCliente(null);
     }
   };
 
-  const buscarProductos = async (val) => {
-    setSearchTerm(val);
-    if (val.length > 2) {
-      const res = await axios.get(`http://localhost:5000/api/productos/search?term=${val}`);
-      setProductosBusqueda(res.data);
-    } else {
-      setProductosBusqueda([]);
-    }
-  };
-
+  /**
+   * Agrega un producto al carrito desde el BuscadorProductos.
+   * @param {Object} producto - Producto seleccionado
+   */
   const agregarAlCarrito = (producto) => {
-    const itemExistente = carrito.find(item => item.id_producto === producto.id_producto);
-    
+    setErrorMsg('');
+    const itemExistente = carrito.find((item) => item.id_producto === producto.id_producto);
+
     if (itemExistente) {
-      setCarrito(carrito.map(item => 
-        (item.id_producto === producto.id_producto)
-          ? { ...item, cantidad: item.cantidad + 1, subtotal: (item.cantidad + 1) * item.precio_unitario }
+      setCarrito(carrito.map((item) =>
+        item.id_producto === producto.id_producto
+          ? {
+              ...item,
+              cantidad: item.cantidad + 1,
+              subtotal: (item.cantidad + 1) * item.precio_unitario,
+            }
           : item
       ));
     } else {
-      setCarrito([...carrito, {
-        id_producto: producto.id_producto,
-        id_producto_precio: producto.id_producto_precio || null,
-        nombre_comercial: producto.nombre_comercial,
-        precio_unitario: producto.precio_unitario || 0,
-        cantidad: 1,
-        subtotal: producto.precio_unitario || 0
-      }]);
+      setCarrito([
+        ...carrito,
+        {
+          id_producto:       producto.id_producto,
+          id_producto_precio: producto.id_producto_precio || null,
+          nombre_comercial:  producto.nombre_comercial,
+          precio_unitario:   parseFloat(producto.precio_unitario) || 0,
+          cantidad:          1,
+          subtotal:          parseFloat(producto.precio_unitario) || 0,
+        },
+      ]);
     }
-    setSearchTerm('');
-    setProductosBusqueda([]);
   };
 
   const eliminarItem = (index) => {
     setCarrito(carrito.filter((_, i) => i !== index));
   };
 
+  const actualizarCantidad = (index, nuevaCantidad) => {
+    if (nuevaCantidad < 1) return;
+    setCarrito(carrito.map((item, i) =>
+      i === index
+        ? { ...item, cantidad: nuevaCantidad, subtotal: nuevaCantidad * item.precio_unitario }
+        : item
+    ));
+  };
+
   const total = carrito.reduce((acc, item) => acc + item.subtotal, 0);
 
   const guardarVenta = async () => {
-    if (!cliente) return alert('Seleccione un cliente');
-    if (carrito.length === 0) return alert('El carrito está vacío');
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    if (!cliente) {
+      setErrorMsg('Seleccione un cliente antes de finalizar la venta.');
+      return;
+    }
+    if (carrito.length === 0) {
+      setErrorMsg('El carrito está vacío. Agregue al menos un producto.');
+      return;
+    }
 
     try {
       const data = {
-        id_cliente: cliente.id_cliente,
-        id_usuario: user.id_usuario,
+        id_cliente:          cliente.id_cliente,
+        id_usuario:          user.id_usuario,
         id_tipo_comprobante: tipoComp,
-        serie_documento: 'F001', // Valor por defecto para prueba
-        numero_documento: '000001', // Valor por defecto para prueba
+        serie_documento:     'F001',
+        numero_documento:    '000001',
         total,
-        detalle: carrito.map(item => ({
-          id_producto: item.id_producto,
+        detalle: carrito.map((item) => ({
+          id_producto:        item.id_producto,
           id_producto_precio: item.id_producto_precio,
-          cantidad: item.cantidad,
-          precio_unitario: item.precio_unitario,
-          subtotal: item.subtotal
-        }))
+          cantidad:           item.cantidad,
+          precio_unitario:    item.precio_unitario,
+          subtotal:           item.subtotal,
+        })),
       };
-      
-      await axios.post('http://localhost:5000/api/ventas', data);
-      alert('Venta realizada con éxito');
+
+      await axios.post(`${API_BASE}/ventas`, data);
+      setSuccessMsg('¡Venta registrada con éxito!');
       setCarrito([]);
       setCliente(null);
       setDocCliente('');
     } catch (err) {
-      alert('Error al guardar la venta');
+      console.error('Error al guardar venta:', err);
+      setErrorMsg('Error al guardar la venta. Intente nuevamente.');
     }
   };
 
@@ -100,95 +132,140 @@ const Ventas = ({ user }) => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Columna Izquierda: Formulario */}
       <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
+        {/* Mensajes de estado */}
+        {errorMsg && (
+          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-sm font-bold" role="alert">
+            {errorMsg}
+          </div>
+        )}
+        {successMsg && (
+          <div className="p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-2xl text-sm font-bold" role="status">
+            {successMsg}
+          </div>
+        )}
+
+        {/* Comprobante y cliente */}
+        <div className="bg-white p-6 rounded-2xl shadow-pharma border border-blue-50 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Tipo Comprobante</label>
-              <select 
-                className="w-full border p-2 rounded-lg"
+              <label className="block text-sm font-bold mb-1 text-pharma-text" htmlFor="tipo-comprobante">
+                Tipo Comprobante
+              </label>
+              <select
+                id="tipo-comprobante"
+                className="w-full border border-blue-100 p-2.5 rounded-xl focus:ring-2 focus:ring-pharma-primary outline-none bg-pharma-bg"
                 value={tipoComp}
                 onChange={(e) => setTipoComp(e.target.value)}
               >
-                {comprobantes.map(c => <option key={c.id_tipo_comprobante} value={c.id_tipo_comprobante}>{c.nombre_documento}</option>)}
+                {comprobantes.map((c) => (
+                  <option key={c.id_tipo_comprobante} value={c.id_tipo_comprobante}>
+                    {c.nombre_documento || c.nombre}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Buscar Cliente (DNI/RUC)</label>
+              <label className="block text-sm font-bold mb-1 text-pharma-text" htmlFor="doc-cliente">
+                Buscar Cliente (DNI/RUC)
+              </label>
               <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  className="flex-1 border p-2 rounded-lg"
+                <input
+                  id="doc-cliente"
+                  type="text"
+                  className="flex-1 border border-blue-100 p-2.5 rounded-xl focus:ring-2 focus:ring-pharma-primary outline-none bg-pharma-bg"
                   value={docCliente}
                   onChange={(e) => setDocCliente(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && buscarCliente()}
+                  aria-label="Número de documento del cliente"
                 />
-                <button onClick={buscarCliente} className="bg-botica-green text-white p-2 rounded-lg"><Search size={20}/></button>
+                <button
+                  onClick={buscarCliente}
+                  className="text-white p-2.5 rounded-xl hover:opacity-90 transition-opacity"
+                  style={{ background: 'linear-gradient(135deg, #06B6D4, #2563EB)' }}
+                  aria-label="Buscar cliente"
+                >
+                  <Search size={20} aria-hidden="true" />
+                </button>
               </div>
             </div>
           </div>
+
           {cliente && (
-            <div className="p-3 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <p className="text-sm font-bold text-botica-dark">{cliente.nombres_razon_social}</p>
-              <p className="text-xs text-gray-500">Doc: {cliente.numero_documento}</p>
+            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+              <p className="text-sm font-black text-pharma-text">{cliente.nombres_razon_social}</p>
+              <p className="text-xs text-pharma-muted">Doc: {cliente.numero_documento}</p>
             </div>
           )}
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm relative">
-          <label className="block text-sm font-medium mb-2">Buscar Producto</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Nombre del producto..."
-              className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-botica-green"
-              value={searchTerm}
-              onChange={(e) => buscarProductos(e.target.value)}
-            />
-          </div>
-          
-          {productosBusqueda.length > 0 && (
-            <div className="absolute left-6 right-6 mt-1 bg-white border rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
-              {productosBusqueda.map(p => (
-                <div key={p.id_producto} className="p-3 border-b hover:bg-gray-50 flex items-center justify-between">
-                  <div>
-                    <p className="font-bold">{p.nombre_comercial}</p>
-                    <p className="text-xs text-gray-500">Stock: {p.stock_actual_unidades}</p>
-                  </div>
-                  <button onClick={() => agregarAlCarrito(p)} className="bg-botica-green text-white px-3 py-1 rounded-lg text-sm">
-                    S/ {p.precio_unitario || '0.00'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Buscador de productos avanzado */}
+        <div className="bg-white p-6 rounded-2xl shadow-pharma border border-gray-50">
+          <label className="block text-sm font-bold mb-3 text-pharma-text">
+            Buscar Producto
+          </label>
+          <BuscadorProductos
+            onSelect={agregarAlCarrito}
+            placeholder="Nombre comercial o principio activo..."
+          />
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
+        {/* Tabla del carrito */}
+        <div className="bg-white rounded-2xl shadow-pharma border border-gray-50 overflow-hidden">
+          <table className="w-full" role="table" aria-label="Carrito de venta">
+            <thead className="bg-pharma-bg">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Precio</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Cant.</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
-                <th className="px-6 py-3"></th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-black text-pharma-muted uppercase tracking-wider">Producto</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-black text-pharma-muted uppercase tracking-wider">Precio</th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-black text-pharma-muted uppercase tracking-wider">Cant.</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-black text-pharma-muted uppercase tracking-wider">Subtotal</th>
+                <th scope="col" className="px-6 py-3" aria-label="Acciones"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-blue-50">
               {carrito.map((item, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 text-sm font-medium">{item.nombre_comercial}</td>
-                  <td className="px-6 py-4 text-sm text-right">S/ {item.precio_unitario.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-sm text-center">{item.cantidad}</td>
-                  <td className="px-6 py-4 text-sm text-right font-bold">S/ {item.subtotal.toFixed(2)}</td>
+                <tr key={index} role="row">
+                  <td className="px-6 py-4 text-sm font-bold text-pharma-text">{item.nombre_comercial}</td>
+                  <td className="px-6 py-4 text-sm text-right text-pharma-muted">
+                    S/ {item.precio_unitario.toFixed(2)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => actualizarCantidad(index, item.cantidad - 1)}
+                        className="w-6 h-6 rounded-lg bg-blue-50 hover:bg-blue-100 text-pharma-text font-black text-xs transition-colors"
+                        aria-label={`Reducir cantidad de ${item.nombre_comercial}`}
+                      >
+                        −
+                      </button>
+                      <span className="font-black w-6 text-center">{item.cantidad}</span>
+                      <button
+                        onClick={() => actualizarCantidad(index, item.cantidad + 1)}
+                        className="w-6 h-6 rounded-lg bg-blue-50 hover:bg-blue-100 text-pharma-text font-black text-xs transition-colors"
+                        aria-label={`Aumentar cantidad de ${item.nombre_comercial}`}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-right font-black text-pharma-primary">
+                    S/ {item.subtotal.toFixed(2)}
+                  </td>
                   <td className="px-6 py-4 text-right">
-                    <button onClick={() => eliminarItem(index)} className="text-red-500 hover:text-red-700"><Trash2 size={18}/></button>
+                    <button
+                      onClick={() => eliminarItem(index)}
+                      className="text-pharma-muted hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50"
+                      aria-label={`Eliminar ${item.nombre_comercial} del carrito`}
+                    >
+                      <Trash2 size={18} aria-hidden="true" />
+                    </button>
                   </td>
                 </tr>
               ))}
               {carrito.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-gray-400 italic">No hay productos en el detalle</td>
+                  <td colSpan="5" className="px-6 py-10 text-center text-pharma-muted italic text-sm">
+                    No hay productos en el detalle
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -196,20 +273,43 @@ const Ventas = ({ user }) => {
         </div>
       </div>
 
+      {/* Columna Derecha: Resumen */}
       <div className="space-y-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
-          <h3 className="text-lg font-bold border-b pb-2">Resumen</h3>
-          <div className="flex justify-between text-2xl font-bold text-botica-dark pt-2">
-            <span>Total:</span>
-            <span>S/ {total.toFixed(2)}</span>
+        <div className="bg-white p-6 rounded-2xl shadow-pharma border border-blue-50 space-y-4">
+          <h3 className="text-lg font-black text-pharma-text border-b border-blue-50 pb-3">Resumen</h3>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-pharma-muted">
+              <span>Subtotal</span>
+              <span>S/ {(total / 1.18).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-pharma-muted">
+              <span>IGV (18%)</span>
+              <span>S/ {(total - total / 1.18).toFixed(2)}</span>
+            </div>
           </div>
-          <button 
+
+          <div className="flex justify-between text-2xl font-black text-pharma-text pt-2 border-t border-blue-50">
+            <span>Total:</span>
+            <span className="text-gradient-cyan">S/ {total.toFixed(2)}</span>
+          </div>
+
+          <button
             onClick={guardarVenta}
-            className="w-full bg-botica-green text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-botica-dark transition-colors shadow-lg"
+            disabled={carrito.length === 0 || !cliente}
+            className="w-full text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 shadow-blue hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: 'linear-gradient(135deg, #06B6D4, #2563EB)' }}
+            aria-label="Finalizar y registrar venta"
           >
-            <Save size={20} />
+            <Save size={20} aria-hidden="true" />
             FINALIZAR VENTA
           </button>
+
+          {!cliente && (
+            <p className="text-[10px] text-pharma-muted text-center font-bold">
+              Seleccione un cliente para continuar
+            </p>
+          )}
         </div>
       </div>
     </div>
