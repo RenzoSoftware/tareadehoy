@@ -8,7 +8,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await axios.get('http://localhost:5001/api/ventas/resumen-hoy');
+        const response = await axios.get('http://localhost:5000/api/ventas/resumen-hoy');
         setStats(response.data);
       } catch (err) {
         console.error('Error fetching stats:', err);

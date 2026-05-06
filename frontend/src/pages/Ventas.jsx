@@ -12,13 +12,13 @@ const Ventas = ({ user }) => {
   const [carrito, setCarrito] = useState([]);
   
   useEffect(() => {
-    axios.get('http://localhost:5001/api/ventas/comprobantes')
+    axios.get('http://localhost:5000/api/ventas/comprobantes')
       .then(res => setComprobantes(res.data));
   }, []);
 
   const buscarCliente = async () => {
     try {
-      const res = await axios.get(`http://localhost:5001/api/clientes/buscar/${docCliente}`);
+      const res = await axios.get(`http://localhost:5000/api/clientes/buscar/${docCliente}`);
       setCliente(res.data);
     } catch (err) {
       alert('Cliente no encontrado');
@@ -29,7 +29,7 @@ const Ventas = ({ user }) => {
   const buscarProductos = async (val) => {
     setSearchTerm(val);
     if (val.length > 2) {
-      const res = await axios.get(`http://localhost:5001/api/productos/search?term=${val}`);
+      const res = await axios.get(`http://localhost:5000/api/productos/search?term=${val}`);
       setProductosBusqueda(res.data);
     } else {
       setProductosBusqueda([]);
@@ -91,7 +91,7 @@ const Ventas = ({ user }) => {
         }))
       };
       
-      await axios.post('http://localhost:5001/api/ventas', data);
+      await axios.post('http://localhost:5000/api/ventas', data);
       alert('Venta realizada con éxito');
       setCarrito([]);
       setCliente(null);

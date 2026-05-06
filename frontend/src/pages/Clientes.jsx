@@ -12,7 +12,7 @@ const Clientes = () => {
 
   const fetchClientes = async () => {
     try {
-      const res = await axios.get('http://localhost:5001/api/clientes');
+      const res = await axios.get('http://localhost:5000/api/clientes');
       setClientes(res.data);
     } catch (err) {
       console.error(err);

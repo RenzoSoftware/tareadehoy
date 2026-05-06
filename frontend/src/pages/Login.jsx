@@ -11,7 +11,7 @@ const Login = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5001/api/auth/login', {
+      const response = await axios.post('http://localhost:5000/api/auth/login', {
         usuario,
         contrasena
       });
@@ -19,7 +19,13 @@ const Login = ({ onLogin }) => {
         onLogin(response.data.user);
       }
     } catch (err) {
-      setError('Credenciales inválidas');
+      if (err.response) {
+        setError(err.response.data.message || 'Credenciales inválidas');
+      } else if (err.request) {
+        setError('No se pudo conectar con el servidor. Verifique que el backend esté corriendo.');
+      } else {
+        setError('Error al intentar iniciar sesión');
+      }
     }
   };
 
