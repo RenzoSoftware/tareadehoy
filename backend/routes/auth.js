@@ -2,11 +2,9 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Login
 router.post('/login', (req, res) => {
   const { usuario, contrasena } = req.body;
-  // Usamos SHA2(?, 256) para comparar la contraseña encriptada en la BD
-  const query = 'SELECT * FROM Usuarios WHERE Nombre_Usuario = ? AND Contrasena = SHA2(?, 256)';
+  const query = 'SELECT * FROM usuarios WHERE username = ? AND password_hash = SHA2(?, 256)';
   
   db.query(query, [usuario, contrasena], (err, results) => {
     if (err) {
