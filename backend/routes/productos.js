@@ -2,48 +2,44 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Listar productos
+// Listar productos con sus categorías y laboratorios
 router.get('/', (req, res) => {
   const query = `
-    SELECT p.*, c.Nombre_Categoria, l.Nombre_Laboratorio, pr.Nombre_Presentacion, um.Nombre_Unidad
-    FROM Productos p
-    LEFT JOIN Categorias c ON p.ID_Categoria = c.ID_Categoria
-    LEFT JOIN Laboratorios l ON p.ID_Laboratorio = l.ID_Laboratorio
-    LEFT JOIN Presentaciones pr ON p.ID_Presentacion = pr.ID_Presentacion
-    LEFT JOIN Unidades_Medida um ON p.ID_Unidad = um.ID_Unidad
+    SELECT p.id_producto, p.nombre_comercial, p.principio_activo, p.stock_actual_unidades, p.stock_minimo_unidades, p.fecha_vencimiento,
+           c.nombre_categoria, l.nombre_laboratorio
+    FROM productos p
+    LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+    LEFT JOIN laboratorios l ON p.id_laboratorio = l.id_laboratorio
   `;
   
   db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('Error al listar productos:', err);
+      return res.status(500).json({ error: err.message });
+    }
     res.json(results);
   });
 });
 
-// Buscar productos por nombre o código
+// Buscar productos por nombre o código para la venta
 router.get('/search', (req, res) => {
   const { term } = req.query;
   const query = `
-    SELECT p.*, pp.Precio_Unidad, pp.Precio_Blister, pp.Precio_Caja
-    FROM Productos p
-    LEFT JOIN Productos_Precios pp ON p.ID_Producto = pp.ID_Producto
-    WHERE p.Nombre_Producto LIKE ? OR p.Codigo_Producto LIKE ?
+    SELECT p.id_producto, p.nombre_comercial, p.stock_actual_unidades,
+           pp.precio_unitario, pp.id_producto_precio
+    FROM productos p
+    LEFT JOIN detalle_ventas pp ON p.id_producto = pp.id_producto
+    WHERE p.nombre_comercial LIKE ?
+    GROUP BY p.id_producto
   `;
   const searchTerm = `%${term}%`;
   
-  db.query(query, [searchTerm, searchTerm], (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  db.query(query, [searchTerm], (err, results) => {
+    if (err) {
+      console.error('Error al buscar productos:', err);
+      return res.status(500).json({ error: err.message });
+    }
     res.json(results);
-  });
-});
-
-// Agregar producto
-router.post('/', (req, res) => {
-  const { nombre, categoria, laboratorio, presentacion, unidad, stock } = req.body;
-  const query = 'INSERT INTO Productos (Nombre_Producto, ID_Categoria, ID_Laboratorio, ID_Presentacion, ID_Unidad, Stock) VALUES (?, ?, ?, ?, ?, ?)';
-  
-  db.query(query, [nombre, categoria, laboratorio, presentacion, unidad, stock], (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, id: results.insertId });
   });
 });
 

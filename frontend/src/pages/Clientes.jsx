@@ -19,10 +19,12 @@ const Clientes = () => {
     }
   };
 
-  const filteredClientes = clientes.filter(c => 
-    c.Nombre_Cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.Numero_Documento.includes(searchTerm)
-  );
+  const filteredClientes = clientes.filter(c => {
+    const nombre = c.nombres_razon_social || '';
+    const documento = c.numero_documento || '';
+    return nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           documento.includes(searchTerm);
+  });
 
   return (
     <div className="space-y-6">
@@ -47,32 +49,33 @@ const Clientes = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClientes.map(c => (
-            <div key={c.ID_Cliente} className="border rounded-xl p-4 hover:border-botica-green transition-colors bg-gray-50/50">
-              <div className="flex justify-between items-start mb-3">
-                <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xl">
-                  {c.Nombre_Cliente.charAt(0)}
+          {Array.isArray(filteredClientes) && filteredClientes.length > 0 ? (
+            filteredClientes.map(c => (
+              <div key={c.id_cliente} className="border rounded-xl p-4 hover:border-botica-green transition-colors bg-gray-50/50">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xl">
+                    {c.nombres_razon_social ? c.nombres_razon_social.charAt(0) : '?'}
+                  </div>
+                  <button className="text-gray-400 hover:text-botica-green">
+                    <Edit size={18} />
+                  </button>
                 </div>
-                <button className="text-gray-400 hover:text-botica-green">
-                  <Edit size={18} />
-                </button>
+                <h4 className="font-bold text-gray-900 mb-1">{c.nombres_razon_social || 'Sin Nombre'}</h4>
+                <p className="text-xs text-gray-500 mb-3 uppercase font-semibold">DOC: {c.numero_documento || 'N/A'}</p>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Phone size={14} className="text-botica-green" />
+                    <span>{c.telefono || 'Sin teléfono'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Mail size={14} className="text-botica-green" />
+                    <span>{c.direccion || 'Sin dirección'}</span>
+                  </div>
+                </div>
               </div>
-              <h4 className="font-bold text-gray-900 mb-1">{c.Nombre_Cliente}</h4>
-              <p className="text-xs text-gray-500 mb-3 uppercase font-semibold">{c.Tipo_Documento}: {c.Numero_Documento}</p>
-              
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Phone size={14} className="text-botica-green" />
-                  <span>{c.Telefono || 'Sin teléfono'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Mail size={14} className="text-botica-green" />
-                  <span>{c.Direccion || 'Sin dirección'}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-          {filteredClientes.length === 0 && (
+            ))
+          ) : (
             <div className="col-span-full text-center py-10 text-gray-400">
               No se encontraron clientes que coincidan con la búsqueda.
             </div>

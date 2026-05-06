@@ -4,7 +4,7 @@ const db = require('../db');
 
 // Resumen de ventas del día
 router.get('/resumen-hoy', (req, res) => {
-  const query = 'SELECT SUM(Total_Venta) as totalVentas, COUNT(*) as cantidadVentas FROM Ventas WHERE DATE(Fecha_Venta) = CURDATE()';
+  const query = 'SELECT SUM(total) as totalVentas, COUNT(*) as cantidadVentas FROM ventas WHERE DATE(fecha_hora) = CURDATE()';
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results[0]);
@@ -13,14 +13,17 @@ router.get('/resumen-hoy', (req, res) => {
 
 // Registrar venta
 router.post('/', (req, res) => {
-  const { id_cliente, id_usuario, id_tipo_comprobante, subtotal, igv, total, detalle } = req.body;
+  const { id_cliente, id_usuario, id_tipo_comprobante, serie_documento, numero_documento, total, detalle } = req.body;
   
   db.beginTransaction((err) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    const queryVenta = 'INSERT INTO Ventas (ID_Cliente, ID_Usuario, ID_Tipo_Comprobante, Subtotal, IGV, Total_Venta, Fecha_Venta) VALUES (?, ?, ?, ?, ?, ?, NOW())';
+    const queryVenta = `
+      INSERT INTO ventas (id_cliente, id_usuario, id_tipo_comprobante, serie_documento, numero_documento, total, fecha_hora) 
+      VALUES (?, ?, ?, ?, ?, ?, NOW())
+    `;
     
-    db.query(queryVenta, [id_cliente, id_usuario, id_tipo_comprobante, subtotal, igv, total], (err, results) => {
+    db.query(queryVenta, [id_cliente, id_usuario, id_tipo_comprobante, serie_documento, numero_documento, total], (err, results) => {
       if (err) {
         return db.rollback(() => {
           res.status(500).json({ error: err.message });
@@ -28,8 +31,8 @@ router.post('/', (req, res) => {
       }
 
       const idVenta = results.insertId;
-      const queryDetalle = 'INSERT INTO Detalle_Ventas (ID_Venta, ID_Producto, Cantidad, Precio_Unitario, Subtotal) VALUES ?';
-      const values = detalle.map(d => [idVenta, d.id_producto, d.cantidad, d.precio, d.subtotal]);
+      const queryDetalle = 'INSERT INTO detalle_ventas (id_venta, id_producto, id_producto_precio, cantidad, precio_unitario, subtotal) VALUES ?';
+      const values = detalle.map(d => [idVenta, d.id_producto, d.id_producto_precio, d.cantidad, d.precio_unitario, d.subtotal]);
 
       db.query(queryDetalle, [values], (err) => {
         if (err) {
@@ -53,7 +56,7 @@ router.post('/', (req, res) => {
 
 // Listar tipos de comprobantes
 router.get('/comprobantes', (req, res) => {
-  db.query('SELECT * FROM Tipos_Comprobantes', (err, results) => {
+  db.query('SELECT * FROM tipos_comprobantes', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
