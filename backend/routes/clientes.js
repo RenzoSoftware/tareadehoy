@@ -5,6 +5,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
+const { checkAuth, checkRole } = require('../middleware/auth');
 
 // ── Helpers ──────────────────────────────────────────────────
 const validarCliente = (body) => {
@@ -28,7 +29,7 @@ const validarCliente = (body) => {
 // ─────────────────────────────────────────────────────────────
 // GET /api/clientes  — Listar todos
 // ─────────────────────────────────────────────────────────────
-router.get('/', (req, res) => {
+router.get('/', checkAuth, (req, res) => {
   const query = `
     SELECT c.*, tdi.descripcion AS tipo_doc_descripcion, tdi.codigo AS tipo_doc_codigo
     FROM Clientes c
@@ -44,7 +45,7 @@ router.get('/', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // GET /api/clientes/tipos-doc  — Tipos de documento
 // ─────────────────────────────────────────────────────────────
-router.get('/tipos-doc', (req, res) => {
+router.get('/tipos-doc', checkAuth, (req, res) => {
   db.query('SELECT * FROM Tipo_Documento_Identidad ORDER BY id_tipo_doc', (err, results) => {
     if (err) return res.status(500).json({ error: 'Error al obtener tipos de documento' });
     res.json(results);
@@ -54,7 +55,7 @@ router.get('/tipos-doc', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // GET /api/clientes/buscar/:documento  — Buscar por documento
 // ─────────────────────────────────────────────────────────────
-router.get('/buscar/:documento', (req, res) => {
+router.get('/buscar/:documento', checkAuth, (req, res) => {
   const { documento } = req.params;
   const query = `
     SELECT c.*, tdi.descripcion AS tipo_doc_descripcion
@@ -72,7 +73,7 @@ router.get('/buscar/:documento', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // GET /api/clientes/:id  — Obtener uno
 // ─────────────────────────────────────────────────────────────
-router.get('/:id', (req, res) => {
+router.get('/:id', checkAuth, (req, res) => {
   const { id } = req.params;
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
 
@@ -92,7 +93,7 @@ router.get('/:id', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // POST /api/clientes  — Crear
 // ─────────────────────────────────────────────────────────────
-router.post('/', (req, res) => {
+router.post('/', checkAuth, checkRole(['Administrador', 'Cajero']), (req, res) => {
   const errores = validarCliente(req.body);
   if (errores.length > 0) return res.status(400).json({ errores });
 
@@ -127,7 +128,7 @@ router.post('/', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // PUT /api/clientes/:id  — Actualizar
 // ─────────────────────────────────────────────────────────────
-router.put('/:id', (req, res) => {
+router.put('/:id', checkAuth, checkRole(['Administrador', 'Cajero']), (req, res) => {
   const { id } = req.params;
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
 
@@ -168,7 +169,7 @@ router.put('/:id', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // DELETE /api/clientes/:id  — Eliminar
 // ─────────────────────────────────────────────────────────────
-router.delete('/:id', (req, res) => {
+router.delete('/:id', checkAuth, checkRole(['Administrador']), (req, res) => {
   const { id } = req.params;
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
 
@@ -185,6 +186,25 @@ router.delete('/:id', (req, res) => {
       if (result.affectedRows === 0) return res.status(404).json({ error: 'Cliente no encontrado' });
       res.json({ success: true });
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/clientes/top-frecuentes
+// ─────────────────────────────────────────────────────────────
+router.get('/top-frecuentes', checkAuth, (req, res) => {
+  const query = `
+    SELECT c.id_cliente, c.nombres_razon, COUNT(v.id_venta) as total_compras, SUM(v.total) as total_invertido
+    FROM Clientes c
+    JOIN Ventas v ON c.id_cliente = v.id_cliente
+    WHERE v.estado = 'ACTIVA'
+    GROUP BY c.id_cliente
+    ORDER BY total_compras DESC
+    LIMIT 5
+  `;
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
   });
 });
 

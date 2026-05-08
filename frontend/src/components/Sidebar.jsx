@@ -17,10 +17,16 @@ import { useTheme } from '../context/ThemeContext';
 function cn(...inputs) { return twMerge(clsx(inputs)); }
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard',  path: '/' },
-  { icon: ShoppingCart,    label: 'Ventas',      path: '/ventas' },
-  { icon: Package,         label: 'Productos',   path: '/productos' },
-  { icon: Users,           label: 'Clientes',    path: '/clientes' },
+  { icon: LayoutDashboard, label: 'Dashboard',  path: '/', roles: ['Administrador', 'Cajero', 'Almacenero'] },
+  { icon: ShoppingCart,    label: 'Ventas',      path: '/ventas', roles: ['Administrador', 'Cajero'] },
+  { icon: Package,         label: 'Productos',   path: '/productos', roles: ['Administrador', 'Almacenero'] },
+  { icon: Users,           label: 'Clientes',    path: '/clientes', roles: ['Administrador', 'Cajero'] },
+];
+
+const adminItems = [
+  { icon: Settings, label: 'Configuración', path: '/admin/config', roles: ['Administrador'] },
+  { icon: User,     label: 'Usuarios',      path: '/admin/usuarios', roles: ['Administrador'] },
+  { icon: Activity, label: 'Cargos',        path: '/admin/cargos', roles: ['Administrador'] },
 ];
 
 const Sidebar = ({ onLogout, user }) => {
@@ -69,47 +75,85 @@ const Sidebar = ({ onLogout, user }) => {
       </div>
 
       {/* ── Menú principal ── */}
-      <nav className="flex-1 px-3 py-5 space-y-0.5" role="navigation">
+      <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto custom-scrollbar-sidebar" role="navigation">
         <p className="px-3 text-[9px] font-black uppercase tracking-[0.2em] mb-3" style={{ color: '#475569' }}>
           Menú Principal
         </p>
-        {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              aria-current={isActive ? 'page' : undefined}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group relative"
-              style={{
-                background: isActive ? S.active : 'transparent',
-                borderLeft: isActive ? `3px solid ${S.activeBorder}` : '3px solid transparent',
-              }}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = S.hover; }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-            >
-              <item.icon
-                size={17}
-                style={{ color: isActive ? S.iconActive : S.iconMuted }}
-                className="shrink-0 transition-colors group-hover:!text-blue-300"
-                aria-hidden="true"
-              />
-              <span
-                className="text-sm font-semibold transition-colors group-hover:!text-white"
-                style={{ color: isActive ? S.textActive : S.text }}
+        {menuItems
+          .filter(item => item.roles.includes(user?.cargo))
+          .map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                aria-current={isActive ? 'page' : undefined}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group relative"
+                style={{
+                  background: isActive ? S.active : 'transparent',
+                  borderLeft: isActive ? `3px solid ${S.activeBorder}` : '3px solid transparent',
+                }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = S.hover; }}
+                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
               >
-                {item.label}
-              </span>
-              {isActive && (
-                <span
-                  className="ml-auto w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: S.activeBorder }}
+                <item.icon
+                  size={17}
+                  style={{ color: isActive ? S.iconActive : S.iconMuted }}
+                  className="shrink-0 transition-colors group-hover:!text-blue-300"
                   aria-hidden="true"
                 />
-              )}
-            </Link>
-          );
-        })}
+                <span
+                  className="text-sm font-semibold transition-colors group-hover:!text-white"
+                  style={{ color: isActive ? S.textActive : S.text }}
+                >
+                  {item.label}
+                </span>
+                {isActive && (
+                  <span
+                    className="ml-auto w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: S.activeBorder }}
+                    aria-hidden="true"
+                  />
+                )}
+              </Link>
+            );
+          })}
+
+        {user?.cargo === 'Administrador' && (
+          <>
+            <p className="px-3 text-[9px] font-black uppercase tracking-[0.2em] mt-6 mb-3" style={{ color: '#475569' }}>
+              Administración
+            </p>
+            {adminItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group relative"
+                  style={{
+                    background: isActive ? S.active : 'transparent',
+                    borderLeft: isActive ? `3px solid ${S.activeBorder}` : '3px solid transparent',
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = S.hover; }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <item.icon
+                    size={17}
+                    style={{ color: isActive ? S.iconActive : S.iconMuted }}
+                    className="shrink-0 transition-colors group-hover:!text-blue-300"
+                  />
+                  <span
+                    className="text-sm font-semibold transition-colors group-hover:!text-white"
+                    style={{ color: isActive ? S.textActive : S.text }}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* ── Configuración de usuario ── */}
@@ -136,8 +180,8 @@ const Sidebar = ({ onLogout, user }) => {
           </div>
           <div className="flex-1 text-left min-w-0">
             <p className="text-xs font-bold text-white truncate">{user?.username || 'Usuario'}</p>
-            <p className="text-[9px] font-medium truncate" style={{ color: '#475569' }}>
-              {user?.rol || 'Administrador'}
+            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#60A5FA' }}>
+              {user?.cargo || 'Sin Cargo'}
             </p>
           </div>
           {settingsOpen

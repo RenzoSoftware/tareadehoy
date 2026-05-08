@@ -52,7 +52,7 @@ const Modal = ({ open, onClose, title, size = 'md', children }) => {
 
   return (
     <div
-      className="modal-overlay animate-in"
+      className="modal-overlay modal-animate-in"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       role="dialog"
       aria-modal="true"
@@ -60,8 +60,11 @@ const Modal = ({ open, onClose, title, size = 'md', children }) => {
     >
       <div
         ref={dialogRef}
-        className={`w-full ${SIZES[size]} rounded-2xl shadow-pharma-lg overflow-hidden slide-in`}
-        style={{ backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }}
+        className={`w-full ${SIZES[size]} rounded-2xl shadow-pharma-lg overflow-hidden modal-content-animate`}
+        style={{ 
+          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+          transition: 'all 0.3s ease'
+        }}
       >
         {/* Header */}
         <div

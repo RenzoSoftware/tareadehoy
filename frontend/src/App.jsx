@@ -10,9 +10,18 @@ import Dashboard from './pages/Dashboard';
 import Ventas from './pages/Ventas';
 import Productos from './pages/Productos';
 import Clientes from './pages/Clientes';
+import Categorias from './pages/Categorias';
+import Cargos from './pages/Cargos';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+
+// ── Ruta protegida por rol ──────────────────────────────────────
+const ProtectedRoute = ({ user, allowedRoles, children }) => {
+  if (!user) return <Navigate to="/login" />;
+  if (!allowedRoles.includes(user.cargo)) return <Navigate to="/" />;
+  return children;
+};
 
 // ── Layout autenticado ──────────────────────────────────────────
 const AppLayout = ({ user, onLogout }) => {
@@ -36,6 +45,25 @@ const AppLayout = ({ user, onLogout }) => {
               <Route path="/ventas"    element={<Ventas user={user} />} />
               <Route path="/productos" element={<Productos />} />
               <Route path="/clientes"  element={<Clientes />} />
+              
+              {/* Rutas de administración */}
+              <Route 
+                path="/admin/categorias" 
+                element={
+                  <ProtectedRoute user={user} allowedRoles={['Administrador']}>
+                    <Categorias />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/cargos" 
+                element={
+                  <ProtectedRoute user={user} allowedRoles={['Administrador']}>
+                    <Cargos />
+                  </ProtectedRoute>
+                } 
+              />
+              
               <Route path="*"          element={<Navigate to="/" />} />
             </Routes>
           </main>

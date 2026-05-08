@@ -5,6 +5,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
+const { checkAuth, checkRole } = require('../middleware/auth');
 
 // ── Helpers ──────────────────────────────────────────────────
 const validarProducto = (body) => {
@@ -204,9 +205,9 @@ router.get('/:id', (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// POST /api/productos  — Crear
+// POST /api/productos  — Crear nuevo
 // ─────────────────────────────────────────────────────────────
-router.post('/', (req, res) => {
+router.post('/', checkAuth, checkRole(['Administrador', 'Almacenero']), (req, res) => {
   const errores = validarProducto(req.body);
   if (errores.length > 0) return res.status(400).json({ errores });
 
@@ -249,7 +250,7 @@ router.post('/', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // PUT /api/productos/:id  — Actualizar
 // ─────────────────────────────────────────────────────────────
-router.put('/:id', (req, res) => {
+router.put('/:id', checkAuth, checkRole(['Administrador', 'Almacenero']), (req, res) => {
   const { id } = req.params;
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
 
@@ -297,7 +298,7 @@ router.put('/:id', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // DELETE /api/productos/:id  — Baja lógica (estado = 0)
 // ─────────────────────────────────────────────────────────────
-router.delete('/:id', (req, res) => {
+router.delete('/:id', checkAuth, checkRole(['Administrador', 'Almacenero']), (req, res) => {
   const { id } = req.params;
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
 
@@ -326,7 +327,7 @@ router.delete('/:id', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // PATCH /api/productos/:id/desactivar  — Baja lógica forzada
 // ─────────────────────────────────────────────────────────────
-router.patch('/:id/desactivar', (req, res) => {
+router.patch('/:id/desactivar', checkAuth, checkRole(['Administrador', 'Almacenero']), (req, res) => {
   const { id } = req.params;
   if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
 
@@ -339,6 +340,24 @@ router.patch('/:id/desactivar', (req, res) => {
       res.json({ success: true, tipo: 'logico' });
     }
   );
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/productos/bajos-stock
+// ─────────────────────────────────────────────────────────────
+router.get('/bajos-stock', checkAuth, (req, res) => {
+  const query = `
+    SELECT p.id_producto, p.nombre_comercial, SUM(l.stock_actual) as stock_total, MIN(l.stock_minimo) as stock_minimo
+    FROM Productos p
+    JOIN Lotes l ON p.id_producto = l.id_producto
+    WHERE p.estado = 1
+    GROUP BY p.id_producto
+    HAVING stock_total <= stock_minimo
+  `;
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
 });
 
 module.exports = router;

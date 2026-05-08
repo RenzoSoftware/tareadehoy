@@ -14,7 +14,9 @@ const API_BASE = 'http://localhost:5000/api';
 
 const Ventas = ({ user }) => {
   const [comprobantes, setComprobantes] = useState([]);
-  const [tipoComp, setTipoComp]         = useState('1');
+  const [tipoComp, setTipoComp]         = useState('');
+  const [formaPago, setFormaPago]       = useState('CONTADO');
+  const [montoRecibido, setMontoRecibido] = useState(0);
   const [docCliente, setDocCliente]     = useState('');
   const [cliente, setCliente]           = useState(null);
   const [carrito, setCarrito]           = useState([]);
@@ -23,7 +25,10 @@ const Ventas = ({ user }) => {
 
   useEffect(() => {
     axios.get(`${API_BASE}/ventas/comprobantes`)
-      .then((res) => setComprobantes(res.data))
+      .then((res) => {
+        setComprobantes(res.data);
+        if (res.data.length > 0) setTipoComp(res.data[0].id_tipo_comprobante);
+      })
       .catch((err) => console.error('Error al cargar comprobantes:', err));
   }, []);
 
@@ -105,26 +110,24 @@ const Ventas = ({ user }) => {
         id_cliente:          cliente.id_cliente,
         id_usuario:          user.id_usuario,
         id_tipo_comprobante: tipoComp,
-        serie_documento:     'F001',
-        numero_documento:    '000001',
-        total,
+        forma_pago:          formaPago,
+        monto_recibido:      montoRecibido,
         detalle: carrito.map((item) => ({
           id_producto:        item.id_producto,
           id_producto_precio: item.id_producto_precio,
           cantidad:           item.cantidad,
-          precio_unitario:    item.precio_unitario,
-          subtotal:           item.subtotal,
         })),
       };
 
-      await axios.post(`${API_BASE}/ventas`, data);
-      setSuccessMsg('¡Venta registrada con éxito!');
+      const res = await axios.post(`${API_BASE}/ventas`, data);
+      setSuccessMsg(res.data.mensaje || '¡Venta registrada con éxito!');
       setCarrito([]);
       setCliente(null);
       setDocCliente('');
+      setMontoRecibido(0);
     } catch (err) {
       console.error('Error al guardar venta:', err);
-      setErrorMsg('Error al guardar la venta. Intente nuevamente.');
+      setErrorMsg(err.response?.data?.error || 'Error al guardar la venta. Intente nuevamente.');
     }
   };
 
@@ -276,14 +279,44 @@ const Ventas = ({ user }) => {
       {/* Columna Derecha: Resumen */}
       <div className="space-y-6">
         <div className="bg-white p-6 rounded-2xl shadow-pharma border border-blue-50 space-y-4">
-          <h3 className="text-lg font-black text-pharma-text border-b border-blue-50 pb-3">Resumen</h3>
+          <h3 className="text-lg font-black text-pharma-text border-b border-blue-50 pb-3">Resumen de Pago</h3>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-pharma-muted">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider mb-1.5 text-pharma-muted">
+                Forma de Pago
+              </label>
+              <select
+                className="w-full border border-blue-100 p-2.5 rounded-xl focus:ring-2 focus:ring-pharma-primary outline-none bg-pharma-bg text-sm font-bold"
+                value={formaPago}
+                onChange={(e) => setFormaPago(e.target.value)}
+              >
+                <option value="CONTADO">Efectivo (Contado)</option>
+                <option value="TARJETA">Tarjeta Débito/Crédito</option>
+                <option value="TRANSFERENCIA">Transferencia / Yape / Plin</option>
+                <option value="CREDITO">Crédito</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider mb-1.5 text-pharma-muted">
+                Monto Recibido
+              </label>
+              <input
+                type="number"
+                className="w-full border border-blue-100 p-2.5 rounded-xl focus:ring-2 focus:ring-pharma-primary outline-none bg-pharma-bg text-sm font-bold"
+                value={montoRecibido}
+                onChange={(e) => setMontoRecibido(parseFloat(e.target.value) || 0)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-4 border-t border-blue-50">
+            <div className="flex justify-between text-sm text-pharma-muted font-bold">
               <span>Subtotal</span>
               <span>S/ {(total / 1.18).toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-sm text-pharma-muted">
+            <div className="flex justify-between text-sm text-pharma-muted font-bold">
               <span>IGV (18%)</span>
               <span>S/ {(total - total / 1.18).toFixed(2)}</span>
             </div>
@@ -291,13 +324,20 @@ const Ventas = ({ user }) => {
 
           <div className="flex justify-between text-2xl font-black text-pharma-text pt-2 border-t border-blue-50">
             <span>Total:</span>
-            <span className="text-gradient-cyan">S/ {total.toFixed(2)}</span>
+            <span className="text-blue-600">S/ {total.toFixed(2)}</span>
           </div>
+
+          {montoRecibido > total && (
+            <div className="flex justify-between text-lg font-black text-green-600 pt-2">
+              <span>Vuelto:</span>
+              <span>S/ {(montoRecibido - total).toFixed(2)}</span>
+            </div>
+          )}
 
           <button
             onClick={guardarVenta}
             disabled={carrito.length === 0 || !cliente}
-            className="w-full text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 shadow-blue hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 shadow-blue hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed mt-4"
             style={{ background: 'linear-gradient(135deg, #06B6D4, #2563EB)' }}
             aria-label="Finalizar y registrar venta"
           >

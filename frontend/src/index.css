@@ -40,7 +40,11 @@ body {
   min-height: 100vh;
   background-color: var(--bg);
   color: var(--text);
-  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Transición suave global para el tema */
+*, *::before, *::after {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 #root { width: 100%; height: 100vh; }
@@ -56,10 +60,18 @@ body {
 .theme-border  { border-color: var(--border); }
 
 /* ── Scrollbar ── */
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 99px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3B82F6; }
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background: #CBD5E1; 
+  border-radius: 99px; 
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94A3B8; background-clip: padding-box; }
+
+html.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border: 2px solid transparent; background-clip: padding-box; }
+html.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; background-clip: padding-box; }
 
 /* ── Animaciones ── */
 @keyframes fade-in {
@@ -76,12 +88,33 @@ body {
 
 /* ── Modal overlay ── */
 .modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(15,23,42,0.55);
-  backdrop-filter: blur(4px);
-  z-index: 50;
-  display: flex; align-items: center; justify-content: center;
-  padding: 1rem;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modal-scale-in {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-animate-in {
+  animation: modal-fade-in 0.3s ease-out both;
+}
+
+.modal-content-animate {
+  animation: modal-scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ── Focus accesible ── */
