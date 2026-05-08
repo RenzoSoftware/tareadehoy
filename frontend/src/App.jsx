@@ -24,7 +24,7 @@ import Vencimientos from './pages/reportes/Vencimientos';
 
 // Administración
 import Usuarios from './pages/administracion/Usuarios';
-import Caja from './pages/administracion/Caja';
+import Caja from './pages/Caja';
 
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -64,7 +64,7 @@ const AppLayout = ({ user, onLogout }) => {
 
             {/* Administración */}
             <Route path="/usuarios" element={<Usuarios />} />
-            <Route path="/caja"     element={<Caja />} />
+            <Route path="/caja"     element={<Caja user={user} />} />
 
             <Route path="/configuracion" element={<Configuracion user={user} onLogout={onLogout} />} />
             <Route path="*"          element={<Navigate to="/" />} />

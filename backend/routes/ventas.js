@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { checkAuth, checkRole } = require('../middleware/auth');
 
 // Listar ventas con filtros
 router.get('/', (req, res) => {
