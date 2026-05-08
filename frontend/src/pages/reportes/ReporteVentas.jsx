@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  BarChart2, Calendar, Filter, Download, Eye, 
-  Printer, X, Search, RefreshCw, ChevronLeft, 
-  ChevronRight, TrendingUp, ShoppingBag, Users, FileText
+import {
+  BarChart2, Filter, Download, Eye,
+  Printer, X, RefreshCw, ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -11,273 +11,330 @@ const API_BASE = 'http://localhost:5001/api';
 
 const ReporteVentas = () => {
   const { isDark } = useTheme();
-  
-  // --- Estados ---
-  const [ventas, setVentas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [resumen, setResumen] = useState({ hoy: 0, mes: 0, ticketPromedio: 0, totalTransacciones: 0 });
-  const [vendedores, setVendedores] = useState([]);
+
+  const [ventas, setVentas]       = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [resumen, setResumen]     = useState({ hoy: 0, mes: 0, ticketPromedio: 0, totalTransacciones: 0 });
+  const [vendedores, setVendedores]   = useState([]);
   const [comprobantes, setComprobantes] = useState([]);
 
-  // Filtros
   const [filtros, setFiltros] = useState({
     desde: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
     hasta: new Date().toISOString().split('T')[0],
     tipo: 'Todos',
-    usuario: 'Todos'
+    usuario: 'Todos',
   });
 
-  // Paginación
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage]       = useState(1);
   const itemsPerPage = 10;
-
-  // Modales
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedVenta, setSelectedVenta] = useState(null);
+  const [selectedVenta, setSelectedVenta]     = useState(null);
 
-  // --- Estilos ---
+  // ── Estilos dinámicos ──────────────────────────────────────
   const s = {
-    container: { backgroundColor: isDark ? '#0f1729' : '#F8FAFC', minHeight: '100%', padding: '24px', color: isDark ? '#e2e8f0' : '#1e293b', fontFamily: 'system-ui, sans-serif', transition: 'all 0.2s' },
-    card: { backgroundColor: isDark ? '#1e293b' : '#FFFFFF', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#E2E8F0'}`, padding: '20px', marginBottom: '24px' },
-    statCard: (color) => ({
-      backgroundColor: isDark ? '#1e293b' : '#FFFFFF',
-      borderRadius: '16px',
-      border: `1px solid ${isDark ? '#334155' : '#E2E8F0'}`,
-      padding: '20px',
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px',
-      borderLeft: `4px solid ${color}`
-    }),
-    input: { backgroundColor: isDark ? '#0f1729' : '#F8FAFC', border: `1px solid ${isDark ? '#334155' : '#CBD5E1'}`, borderRadius: '8px', padding: '10px 12px', color: isDark ? '#e2e8f0' : '#1e293b', fontSize: '14px', outline: 'none', width: '100%' },
-    button: (bg = '#3b82f6') => ({ backgroundColor: bg, color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'opacity 0.2s' }),
-    btnGhost: { backgroundColor: 'transparent', color: isDark ? '#94a3b8' : '#64748b', border: `1px solid ${isDark ? '#334155' : '#E2E8F0'}`, borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    table: { width: '100%', borderCollapse: 'collapse', marginTop: '16px' },
-    th: { textAlign: 'left', padding: '12px 16px', fontSize: '11px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', borderBottom: `1px solid ${isDark ? '#334155' : '#E2E8F0'}` },
-    td: { padding: '14px 16px', fontSize: '13px', borderBottom: `1px solid ${isDark ? '#334155' : '#E2E8F0'}` },
-    badge: (bg, text) => ({ backgroundColor: bg, color: text, padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '900' }),
-    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-    modalContent: { backgroundColor: isDark ? '#1e293b' : '#FFFFFF', borderRadius: '20px', width: '95%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', padding: '32px', position: 'relative', border: `1px solid ${isDark ? '#334155' : '#E2E8F0'}` },
-    chartContainer: { height: '200px', display: 'flex', alignItems: 'flex-end', gap: '8px', padding: '20px 0', borderBottom: `1px solid ${isDark ? '#334155' : '#E2E8F0'}` }
+    card: {
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      borderColor:     isDark ? '#334155' : '#EFF6FF',
+    },
+    text:  { color: isDark ? '#F1F5F9' : '#1E293B' },
+    muted: { color: isDark ? '#94A3B8' : '#64748B' },
+    input: {
+      backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+      borderColor:     isDark ? '#334155' : '#DBEAFE',
+      color:           isDark ? '#F1F5F9' : '#1E293B',
+    },
+    tableHeader: { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' },
+    divider:     { borderColor: isDark ? '#334155' : '#EFF6FF' },
+    modalBg:     { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
+    footerBg:    { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' },
   };
 
-  // --- Lógica de Datos ---
+  // ── Fetch ──────────────────────────────────────────────────
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const query = `desde=${filtros.desde}&hasta=${filtros.hasta}&tipo=${filtros.tipo}&usuario=${filtros.usuario}`;
       const [ventasRes, resumenRes, comprobantesRes] = await Promise.all([
         axios.get(`${API_BASE}/ventas?${query}`),
         axios.get(`${API_BASE}/ventas/resumen`),
-        axios.get(`${API_BASE}/ventas/comprobantes`)
+        axios.get(`${API_BASE}/ventas/comprobantes`),
       ]);
-      
-      setVentas(Array.isArray(ventasRes.data) ? ventasRes.data : []);
-      setResumen(resumenRes.data || { hoy: 0, mes: 0, ticketPromedio: 0, totalTransacciones: 0 });
+
+      const data = Array.isArray(ventasRes.data) ? ventasRes.data : [];
+      setVentas(data);
+      const r = resumenRes.data || {};
+      setResumen({
+        hoy:               parseFloat(r.hoy)               || 0,
+        mes:               parseFloat(r.mes)               || 0,
+        ticketPromedio:    parseFloat(r.ticketPromedio)    || 0,
+        totalTransacciones: parseInt(r.totalTransacciones) || 0,
+      });
       setComprobantes(comprobantesRes.data || []);
-      
-      // Extraer vendedores únicos
-      const vend = [...new Set(ventasRes.data.map(v => v.vendedor))].filter(Boolean);
-      setVendedores(vend);
-      
-      setError(null);
-    } catch (err) {
-      setError('Error al cargar reporte de ventas');
+      setVendedores([...new Set(data.map(v => v.vendedor))].filter(Boolean));
+      setCurrentPage(1);
+    } catch {
+      setError('Error al cargar el reporte de ventas.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const handleVerDetalle = async (id) => {
     try {
       const res = await axios.get(`${API_BASE}/ventas/${id}`);
       setSelectedVenta(res.data);
       setShowDetailModal(true);
-    } catch (err) {
+    } catch {
       alert('Error al cargar detalle de venta');
     }
   };
 
-  const handleExportarPDF = () => {
-    alert('Función de exportación PDF en desarrollo');
-  };
+  // ── Paginación ─────────────────────────────────────────────
+  const indexOfLast  = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentVentas = ventas.slice(indexOfFirst, indexOfLast);
+  const totalPages    = Math.ceil(ventas.length / itemsPerPage);
 
-  // Paginación
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentVentas = ventas.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(ventas.length / itemsPerPage);
+  // ── Totales ────────────────────────────────────────────────
+  const granTotal     = ventas.reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
+  const subtotalTotal = granTotal / 1.18;
+  const igvTotal      = granTotal - subtotalTotal;
 
-  // Totales
-  const subtotalTotal = ventas.reduce((acc, v) => acc + (v.total / 1.18), 0);
-  const igvTotal = ventas.reduce((acc, v) => acc + (v.total - (v.total / 1.18)), 0);
-  const granTotal = ventas.reduce((acc, v) => acc + (v.total || 0), 0);
-
-  // Datos para el gráfico simple
+  // ── Gráfico por día ────────────────────────────────────────
   const dailyVentas = ventas.reduce((acc, v) => {
-    const date = new Date(v.fecha_hora).toLocaleDateString();
-    acc[date] = (acc[date] || 0) + v.total;
+    const date = new Date(v.fecha_hora).toLocaleDateString('es-PE');
+    acc[date] = (acc[date] || 0) + parseFloat(v.total || 0);
     return acc;
   }, {});
   const maxVenta = Math.max(...Object.values(dailyVentas), 1);
 
+  // ── Render ─────────────────────────────────────────────────
   return (
-    <div style={s.container}>
+    <div className="space-y-6">
+
       {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '900', color: isDark ? '#F1F5F9' : '#0F172A', marginBottom: '4px' }}>Reporte de Ventas</h1>
-        <p style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em' }}>BOTICA NOVA SALUD · ANÁLISIS DE VENTAS</p>
+      <div>
+        <h1 className="text-2xl font-black" style={s.text}>Reporte de Ventas</h1>
+        <p className="text-xs font-bold tracking-widest mt-1" style={s.muted}>
+          BOTICA NOVA SALUD · ANÁLISIS DE VENTAS
+        </p>
       </div>
 
-      {/* Tarjetas Resumen */}
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '32px' }}>
-        <div style={s.statCard('#3b82f6')}>
-          <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b' }}>VENTAS DEL DÍA</span>
-          <span style={{ fontSize: '24px', fontWeight: '900' }}>S/ {resumen.hoy?.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
-        </div>
-        <div style={s.statCard('#10b981')}>
-          <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b' }}>VENTAS DEL MES</span>
-          <span style={{ fontSize: '24px', fontWeight: '900', color: '#10b981' }}>S/ {resumen.mes?.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
-        </div>
-        <div style={s.statCard('#f59e0b')}>
-          <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b' }}>TICKET PROMEDIO</span>
-          <span style={{ fontSize: '24px', fontWeight: '900', color: '#f59e0b' }}>S/ {resumen.ticketPromedio?.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
-        </div>
-        <div style={s.statCard('#6366f1')}>
-          <span style={{ fontSize: '11px', fontWeight: '900', color: '#64748b' }}>TOTAL TRANSACCIONES</span>
-          <span style={{ fontSize: '24px', fontWeight: '900', color: '#6366f1' }}>{resumen.totalTransacciones}</span>
-        </div>
+      {/* Tarjetas resumen */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'VENTAS DEL DÍA',      value: `S/ ${(resumen.hoy || 0).toFixed(2)}`,            color: '#3B82F6' },
+          { label: 'VENTAS DEL MES',      value: `S/ ${(resumen.mes || 0).toFixed(2)}`,            color: '#10B981' },
+          { label: 'TICKET PROMEDIO',     value: `S/ ${(resumen.ticketPromedio || 0).toFixed(2)}`, color: '#F59E0B' },
+          { label: 'TOTAL TRANSACCIONES', value: resumen.totalTransacciones || 0,                  color: '#6366F1' },
+        ].map(({ label, value, color }) => (
+          <div
+            key={label}
+            className="p-5 rounded-2xl shadow-pharma border"
+            style={{ ...s.card, borderLeft: `4px solid ${color}` }}
+          >
+            <p className="text-[11px] font-black uppercase tracking-wider mb-2" style={s.muted}>{label}</p>
+            <p className="text-2xl font-black" style={{ color }}>{value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Filtros */}
-      <div style={s.card}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr) auto', gap: '16px', alignItems: 'flex-end' }}>
+      <div className="p-5 rounded-2xl shadow-pharma border" style={s.card}>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          {[
+            { label: 'DESDE', key: 'desde', type: 'date' },
+            { label: 'HASTA', key: 'hasta', type: 'date' },
+          ].map(({ label, key, type }) => (
+            <div key={key}>
+              <label className="block text-[11px] font-bold mb-1.5" style={s.muted}>{label}</label>
+              <input
+                type={type}
+                className="w-full border p-2.5 rounded-xl outline-none text-sm"
+                style={s.input}
+                value={filtros[key]}
+                onChange={e => setFiltros({ ...filtros, [key]: e.target.value })}
+              />
+            </div>
+          ))}
+
           <div>
-            <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '6px' }}>DESDE</label>
-            <input type="date" style={s.input} value={filtros.desde} onChange={e => setFiltros({...filtros, desde: e.target.value})} />
-          </div>
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '6px' }}>HASTA</label>
-            <input type="date" style={s.input} value={filtros.hasta} onChange={e => setFiltros({...filtros, hasta: e.target.value})} />
-          </div>
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '6px' }}>COMPROBANTE</label>
-            <select style={s.input} value={filtros.tipo} onChange={e => setFiltros({...filtros, tipo: e.target.value})}>
+            <label className="block text-[11px] font-bold mb-1.5" style={s.muted}>COMPROBANTE</label>
+            <select
+              className="w-full border p-2.5 rounded-xl outline-none text-sm"
+              style={s.input}
+              value={filtros.tipo}
+              onChange={e => setFiltros({ ...filtros, tipo: e.target.value })}
+            >
               <option>Todos</option>
-              {comprobantes.map(c => <option key={c.id_tipo_comprobante}>{c.nombre}</option>)}
+              {comprobantes.map(c => (
+                <option key={c.id_tipo_comprobante}>{c.nombre}</option>
+              ))}
             </select>
           </div>
+
           <div>
-            <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '6px' }}>VENDEDOR</label>
-            <select style={s.input} value={filtros.usuario} onChange={e => setFiltros({...filtros, usuario: e.target.value})}>
+            <label className="block text-[11px] font-bold mb-1.5" style={s.muted}>VENDEDOR</label>
+            <select
+              className="w-full border p-2.5 rounded-xl outline-none text-sm"
+              style={s.input}
+              value={filtros.usuario}
+              onChange={e => setFiltros({ ...filtros, usuario: e.target.value })}
+            >
               <option>Todos</option>
               {vendedores.map(v => <option key={v}>{v}</option>)}
             </select>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button style={s.button('#3b82f6')} onClick={fetchData}><Filter size={18}/> Filtrar</button>
-            <button style={s.button('#10b981')} onClick={handleExportarPDF}><Download size={18}/> PDF</button>
+
+          <div className="flex gap-2">
+            <button
+              onClick={fetchData}
+              className="flex-1 text-white font-black py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              style={{ background: 'linear-gradient(135deg, #06B6D4, #2563EB)' }}
+            >
+              <Filter size={16} /> Filtrar
+            </button>
+            <button
+              onClick={() => alert('Exportación PDF en desarrollo')}
+              className="text-white font-black py-2.5 px-4 rounded-xl flex items-center gap-2 hover:opacity-90 transition-opacity"
+              style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
+            >
+              <Download size={16} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Gráfico Simple */}
-      <div style={s.card}>
-        <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <BarChart2 size={18} color="#3b82f6" /> VENTAS POR DÍA
+      {/* Gráfico por día */}
+      <div className="p-5 rounded-2xl shadow-pharma border" style={s.card}>
+        <h3 className="text-sm font-black flex items-center gap-2 mb-4" style={s.text}>
+          <BarChart2 size={18} color="#3B82F6" aria-hidden="true" /> VENTAS POR DÍA
         </h3>
-        <div style={s.chartContainer}>
+        <div className="flex items-end gap-2 h-40 border-b pb-2" style={s.divider}>
           {Object.entries(dailyVentas).map(([date, amount]) => (
-            <div key={date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <div style={{ 
-                width: '100%', 
-                height: `${(amount / maxVenta) * 150}px`, 
-                backgroundColor: '#3b82f6', 
-                borderRadius: '4px 4px 0 0',
-                position: 'relative'
-              }} title={`S/ ${amount.toFixed(2)}`}>
-                <div style={{ position: 'absolute', top: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '10px', fontWeight: 'bold' }}>
-                  {amount > 0 && `S/ ${Math.round(amount)}`}
-                </div>
-              </div>
-              <span style={{ fontSize: '9px', color: '#64748b', transform: 'rotate(-45deg)', marginTop: '10px' }}>{date.split('/')[0]}/{date.split('/')[1]}</span>
+            <div key={date} className="flex-1 flex flex-col items-center gap-1">
+              <div
+                className="w-full rounded-t"
+                style={{ height: `${(amount / maxVenta) * 120}px`, backgroundColor: '#3B82F6' }}
+                title={`S/ ${amount.toFixed(2)}`}
+              />
+              <span className="text-[9px] font-bold" style={s.muted}>
+                {date.split('/')[0]}/{date.split('/')[1]}
+              </span>
             </div>
           ))}
           {Object.keys(dailyVentas).length === 0 && (
-            <div style={{ width: '100%', textAlign: 'center', color: '#64748b' }}>No hay datos para el gráfico</div>
+            <p className="w-full text-center text-sm" style={s.muted}>Sin datos para el gráfico</p>
           )}
         </div>
       </div>
 
       {/* Tabla */}
-      <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
+      <div className="rounded-2xl shadow-pharma border overflow-hidden" style={s.card}>
         {loading ? (
-          <div style={{ padding: '80px', textAlign: 'center' }}><RefreshCw className="animate-spin" size={32} /></div>
+          <div className="flex justify-center items-center py-20">
+            <RefreshCw className="animate-spin" size={32} color="#3B82F6" />
+          </div>
+        ) : error ? (
+          <div className="p-6 text-center text-red-500 font-bold">{error}</div>
         ) : (
           <>
-            <table style={s.table}>
-              <thead>
+            <table className="w-full" role="table" aria-label="Reporte de ventas">
+              <thead style={s.tableHeader}>
                 <tr>
-                  <th style={s.th}>Fecha</th>
-                  <th style={s.th}>N° Comprobante</th>
-                  <th style={s.th}>Tipo</th>
-                  <th style={s.th}>Cliente</th>
-                  <th style={s.th}>Productos</th>
-                  <th style={s.th}>Subtotal</th>
-                  <th style={s.th}>IGV</th>
-                  <th style={s.th}>Total</th>
-                  <th style={s.th}>Vendedor</th>
-                  <th style={s.th}></th>
+                  {['Fecha', 'N° Comprobante', 'Tipo', 'Cliente', 'Items', 'Subtotal', 'IGV', 'Total', 'Vendedor', ''].map(h => (
+                    <th
+                      key={h}
+                      scope="col"
+                      className="px-4 py-3 text-left text-[11px] font-black uppercase tracking-wider"
+                      style={s.muted}
+                    >{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y" style={s.divider}>
                 {currentVentas.map(v => (
                   <tr key={v.id_venta}>
-                    <td style={s.td}>{new Date(v.fecha_hora).toLocaleDateString()}</td>
-                    <td style={s.td}><span style={{ fontWeight: 'bold' }}>{v.serie_documento}-{v.numero_documento}</span></td>
-                    <td style={s.td}>{v.tipo_comprobante}</td>
-                    <td style={s.td}>{v.cliente_nombre || 'Público General'}</td>
-                    <td style={s.td}>{v.cantidad_items}</td>
-                    <td style={s.td}>S/ {(v.total / 1.18).toFixed(2)}</td>
-                    <td style={s.td}>S/ {(v.total - (v.total / 1.18)).toFixed(2)}</td>
-                    <td style={s.td}><span style={{ fontWeight: 'bold', color: '#10b981' }}>S/ {v.total?.toFixed(2)}</span></td>
-                    <td style={s.td}>{v.vendedor}</td>
-                    <td style={s.td}>
-                      <button style={s.btnGhost} onClick={() => handleVerDetalle(v.id_venta)}><Eye size={16}/></button>
+                    <td className="px-4 py-3 text-sm" style={s.text}>
+                      {new Date(v.fecha_hora).toLocaleDateString('es-PE')}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-black" style={s.text}>{v.numero_completo}</td>
+                    <td className="px-4 py-3 text-sm" style={s.muted}>{v.tipo_comprobante}</td>
+                    <td className="px-4 py-3 text-sm" style={s.text}>{v.cliente_nombre || 'Público General'}</td>
+                    <td className="px-4 py-3 text-sm text-center" style={s.muted}>{v.cantidad_items}</td>
+                    <td className="px-4 py-3 text-sm" style={s.muted}>S/ {(parseFloat(v.total) / 1.18).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm" style={s.muted}>S/ {(parseFloat(v.total) - parseFloat(v.total) / 1.18).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm font-black text-pharma-primary">S/ {parseFloat(v.total).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm" style={s.muted}>{v.vendedor}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleVerDetalle(v.id_venta)}
+                        className="p-1.5 rounded-lg transition-colors hover:bg-blue-500 hover:text-white"
+                        style={s.muted}
+                        aria-label={`Ver detalle venta ${v.numero_completo}`}
+                      >
+                        <Eye size={16} aria-hidden="true" />
+                      </button>
                     </td>
                   </tr>
                 ))}
+                {currentVentas.length === 0 && (
+                  <tr>
+                    <td colSpan="10" className="px-4 py-12 text-center italic text-sm" style={s.muted}>
+                      No hay ventas para el período seleccionado
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
 
             {/* Totales al pie */}
-            <div style={{ padding: '20px', backgroundColor: isDark ? '#0f1729' : '#F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: '40px' }}>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>SUBTOTAL TOTAL</span>
-                <div style={{ fontSize: '18px', fontWeight: '900' }}>S/ {subtotalTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>IGV TOTAL</span>
-                <div style={{ fontSize: '18px', fontWeight: '900' }}>S/ {igvTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>GRAN TOTAL</span>
-                <div style={{ fontSize: '22px', fontWeight: '900', color: '#10b981' }}>S/ {granTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</div>
-              </div>
+            <div className="px-6 py-4 flex justify-end gap-10 border-t" style={{ ...s.footerBg, ...s.divider }}>
+              {[
+                { label: 'SUBTOTAL', value: subtotalTotal },
+                { label: 'IGV (18%)',  value: igvTotal },
+                { label: 'GRAN TOTAL', value: granTotal, highlight: true },
+              ].map(({ label, value, highlight }) => (
+                <div key={label} className="text-right">
+                  <p className="text-[11px] font-black uppercase tracking-wider mb-1" style={s.muted}>{label}</p>
+                  <p
+                    className={`font-black ${highlight ? 'text-xl text-pharma-primary' : 'text-base'}`}
+                    style={highlight ? {} : s.text}
+                  >
+                    S/ {value.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              ))}
             </div>
 
             {/* Paginación */}
-            <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${isDark ? '#334155' : '#E2E8F0'}` }}>
-              <span style={{ fontSize: '13px', color: '#64748b' }}>Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, ventas.length)} de {ventas.length} registros</span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button style={s.btnGhost} disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)}><ChevronLeft size={18}/></button>
-                <button style={s.btnGhost} disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)}><ChevronRight size={18}/></button>
+            <div className="px-6 py-3 flex justify-between items-center border-t" style={s.divider}>
+              <span className="text-sm" style={s.muted}>
+                Mostrando {ventas.length === 0 ? 0 : indexOfFirst + 1}–{Math.min(indexOfLast, ventas.length)} de {ventas.length} registros
+              </span>
+              <div className="flex gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="p-2 rounded-lg border transition-colors disabled:opacity-40"
+                  style={s.card}
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft size={16} style={s.muted} />
+                </button>
+                <button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="p-2 rounded-lg border transition-colors disabled:opacity-40"
+                  style={s.card}
+                  aria-label="Página siguiente"
+                >
+                  <ChevronRight size={16} style={s.muted} />
+                </button>
               </div>
             </div>
           </>
@@ -286,62 +343,98 @@ const ReporteVentas = () => {
 
       {/* Modal Detalle */}
       {showDetailModal && selectedVenta && (
-        <div style={s.modalOverlay}>
-          <div style={s.modalContent}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '900' }}>Detalle de Venta</h2>
-              <button onClick={() => setShowDetailModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24}/></button>
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Detalle de venta"
+        >
+          <div
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border p-8 shadow-pharma-lg"
+            style={{ ...s.modalBg, borderColor: isDark ? '#334155' : '#EFF6FF' }}
+          >
+            {/* Cabecera modal */}
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-black" style={s.text}>Detalle de Venta</h2>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="p-1 rounded-lg hover:bg-red-500 hover:text-white transition-colors"
+                style={s.muted}
+                aria-label="Cerrar modal"
+              >
+                <X size={22} aria-hidden="true" />
+              </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px', backgroundColor: isDark ? '#0f1729' : '#F8FAFC', padding: '16px', borderRadius: '12px' }}>
-              <div>
-                <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}>FECHA</p>
-                <p style={{ fontSize: '14px', fontWeight: 'bold' }}>{new Date(selectedVenta.fecha_hora).toLocaleString()}</p>
-              </div>
-              <div>
-                <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}>COMPROBANTE</p>
-                <p style={{ fontSize: '14px', fontWeight: 'bold' }}>{selectedVenta.serie_documento}-{selectedVenta.numero_documento}</p>
-              </div>
-              <div>
-                <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}>CLIENTE</p>
-                <p style={{ fontSize: '14px', fontWeight: 'bold' }}>{selectedVenta.cliente_nombre || 'Público General'}</p>
-              </div>
-              <div>
-                <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}>VENDEDOR</p>
-                <p style={{ fontSize: '14px', fontWeight: 'bold' }}>{selectedVenta.vendedor}</p>
-              </div>
+            {/* Info general */}
+            <div className="grid grid-cols-2 gap-4 p-4 rounded-xl mb-6" style={s.tableHeader}>
+              {[
+                { label: 'FECHA',       value: new Date(selectedVenta.fecha_hora).toLocaleString('es-PE') },
+                { label: 'COMPROBANTE', value: selectedVenta.numero_completo },
+                { label: 'CLIENTE',     value: selectedVenta.cliente_nombre || 'Público General' },
+                { label: 'VENDEDOR',    value: selectedVenta.vendedor },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <p className="text-[11px] font-black uppercase tracking-wider mb-1" style={s.muted}>{label}</p>
+                  <p className="text-sm font-black" style={s.text}>{value}</p>
+                </div>
+              ))}
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px' }}>
+            {/* Detalle productos */}
+            <table className="w-full mb-6" role="table">
               <thead>
-                <tr style={{ borderBottom: `2px solid ${isDark ? '#334155' : '#E2E8F0'}` }}>
-                  <th style={{ ...s.th, padding: '8px' }}>Producto</th>
-                  <th style={{ ...s.th, padding: '8px', textAlign: 'center' }}>Cant.</th>
-                  <th style={{ ...s.th, padding: '8px', textAlign: 'right' }}>Precio U.</th>
-                  <th style={{ ...s.th, padding: '8px', textAlign: 'right' }}>Subtotal</th>
+                <tr className="border-b-2" style={s.divider}>
+                  {['Producto', 'Cant.', 'Precio U.', 'Subtotal'].map(h => (
+                    <th key={h} className="pb-2 text-[11px] font-black uppercase tracking-wider text-left" style={s.muted}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody>
-                {selectedVenta.detalle.map((item, idx) => (
-                  <tr key={idx} style={{ borderBottom: `1px solid ${isDark ? '#334155' : '#E2E8F0'}` }}>
-                    <td style={{ ...s.td, padding: '8px' }}>{item.nombre_comercial}</td>
-                    <td style={{ ...s.td, padding: '8px', textAlign: 'center' }}>{item.cantidad}</td>
-                    <td style={{ ...s.td, padding: '8px', textAlign: 'right' }}>S/ {item.precio_unitario?.toFixed(2)}</td>
-                    <td style={{ ...s.td, padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>S/ {item.subtotal?.toFixed(2)}</td>
+              <tbody className="divide-y" style={s.divider}>
+                {selectedVenta.detalle?.map((item, idx) => (
+                  <tr key={idx}>
+                    <td className="py-2 text-sm" style={s.text}>{item.nombre_comercial}</td>
+                    <td className="py-2 text-sm text-center" style={s.muted}>{item.cantidad}</td>
+                    <td className="py-2 text-sm text-right" style={s.muted}>S/ {parseFloat(item.precio_unitario).toFixed(2)}</td>
+                    <td className="py-2 text-sm text-right font-black" style={s.text}>S/ {parseFloat(item.subtotal).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', marginBottom: '32px' }}>
-              <div style={{ display: 'flex', gap: '40px', fontSize: '13px', color: '#64748b' }}><span>Subtotal:</span><span>S/ {(selectedVenta.total / 1.18).toFixed(2)}</span></div>
-              <div style={{ display: 'flex', gap: '40px', fontSize: '13px', color: '#64748b' }}><span>IGV (18%):</span><span>S/ {(selectedVenta.total - (selectedVenta.total / 1.18)).toFixed(2)}</span></div>
-              <div style={{ display: 'flex', gap: '40px', fontSize: '20px', fontWeight: '900', color: '#10b981' }}><span>TOTAL:</span><span>S/ {selectedVenta.total?.toFixed(2)}</span></div>
+            {/* Totales modal */}
+            <div className="flex flex-col items-end gap-2 mb-6">
+              <div className="flex gap-10 text-sm" style={s.muted}>
+                <span>Subtotal:</span>
+                <span>S/ {(parseFloat(selectedVenta.total) / 1.18).toFixed(2)}</span>
+              </div>
+              <div className="flex gap-10 text-sm" style={s.muted}>
+                <span>IGV (18%):</span>
+                <span>S/ {(parseFloat(selectedVenta.total) - parseFloat(selectedVenta.total) / 1.18).toFixed(2)}</span>
+              </div>
+              <div className="flex gap-10 text-xl font-black text-pharma-primary">
+                <span>TOTAL:</span>
+                <span>S/ {parseFloat(selectedVenta.total).toFixed(2)}</span>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button style={s.button('#6366f1')} onClick={() => window.print()}><Printer size={18}/> Imprimir</button>
-              <button style={s.btnGhost} onClick={() => setShowDetailModal(false)}>Cerrar</button>
+            {/* Acciones modal */}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => window.print()}
+                className="text-white font-black py-2.5 px-5 rounded-xl flex items-center gap-2 hover:opacity-90 transition-opacity"
+                style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}
+              >
+                <Printer size={18} aria-hidden="true" /> Imprimir
+              </button>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="py-2.5 px-5 rounded-xl border font-black transition-colors hover:opacity-80"
+                style={{ ...s.card, ...s.text }}
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         </div>

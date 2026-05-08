@@ -47,7 +47,12 @@ const Ventas = ({ user }) => {
 
   useEffect(() => {
     axios.get(`${API_BASE}/ventas/comprobantes`)
-      .then((res) => setComprobantes(res.data))
+      .then((res) => {
+        setComprobantes(res.data);
+        if (res.data.length > 0) {
+          setTipoComp(String(res.data[0].id_tipo_comprobante));
+        }
+      })
       .catch((err) => console.error('Error al cargar comprobantes:', err));
   }, []);
 
@@ -111,6 +116,14 @@ const Ventas = ({ user }) => {
 
   const total = carrito.reduce((acc, item) => acc + item.subtotal, 0);
 
+  if (!user) {
+    return (
+      <div className="p-6 text-center text-sm font-bold" style={{ color: '#EF4444' }}>
+        Error: sesión no válida. Por favor recarga la página.
+      </div>
+    );
+  }
+
   const guardarVenta = async () => {
     setErrorMsg('');
     setSuccessMsg('');
@@ -148,7 +161,8 @@ const Ventas = ({ user }) => {
       setDocCliente('');
     } catch (err) {
       console.error('Error al guardar venta:', err);
-      setErrorMsg('Error al guardar la venta. Intente nuevamente.');
+      const msg = err.response?.data?.error || 'Error al guardar la venta. Intente nuevamente.';
+      setErrorMsg(msg);
     }
   };
 
@@ -218,7 +232,7 @@ const Ventas = ({ user }) => {
 
           {cliente && (
             <div className="p-3 rounded-xl border" style={{ backgroundColor: isDark ? '#0F172A' : '#EFF6FF', borderColor: isDark ? '#334155' : '#DBEAFE' }}>
-              <p className="text-sm font-black" style={s.text}>{cliente.nombres_razon_social}</p>
+              <p className="text-sm font-black" style={s.text}>{cliente.nombres_razon}</p>
               <p className="text-xs" style={s.muted}>Doc: {cliente.numero_documento}</p>
             </div>
           )}

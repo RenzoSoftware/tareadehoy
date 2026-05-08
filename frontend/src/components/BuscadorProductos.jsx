@@ -85,10 +85,9 @@ const BuscadorProductos = ({ onSelect, placeholder = 'Buscar por nombre o princi
           aria-autocomplete="list" aria-controls="buscador-resultados"
           placeholder={placeholder} value={term}
           onChange={e => buscar(e.target.value)}
-          onFocus={() => resultados.length > 0 && setAbierto(true)}
           className="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-medium outline-none border transition-all"
           style={{ backgroundColor: inputBg, borderColor: inputBorder, color: textMain }}
-          onFocus2={e => { e.target.style.borderColor = '#3B82F6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.12)'; }}
+          onFocus={e => { if (resultados.length > 0) setAbierto(true); e.target.style.borderColor = '#3B82F6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.12)'; }}
           onBlur={e => { e.target.style.borderColor = inputBorder; e.target.style.boxShadow = 'none'; }}
         />
         {loading && <div className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" role="status" aria-label="Buscando" />}
