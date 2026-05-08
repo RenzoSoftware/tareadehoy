@@ -2,69 +2,11 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// Listar ventas con filtros
-router.get('/', (req, res) => {
-  const { desde, hasta, tipo, usuario } = req.query;
-  let query = `
-    SELECT 
-      v.id_venta, v.fecha_hora, v.serie_documento, v.numero_documento, v.total,
-      tc.nombre AS tipo_comprobante,
-      c.nombres_razon_social AS cliente_nombre,
-      u.nombres AS vendedor,
-      (SELECT COUNT(*) FROM Detalle_Ventas dv WHERE dv.id_venta = v.id_venta) as cantidad_items
-    FROM Ventas v
-    JOIN Tipos_Comprobantes tc ON v.id_tipo_comprobante = tc.id_tipo_comprobante
-    LEFT JOIN Clientes c ON v.id_cliente = c.id_cliente
-    JOIN Usuarios u ON v.id_usuario = u.id_usuario
-    WHERE v.estado = 'ACTIVA'
-  `;
-  const params = [];
-
-  if (desde) { query += ' AND DATE(v.fecha_hora) >= ?'; params.push(desde); }
-  if (hasta) { query += ' AND DATE(v.fecha_hora) <= ?'; params.push(hasta); }
-  if (tipo && tipo !== 'Todos') { query += ' AND tc.nombre = ?'; params.push(tipo); }
-  if (usuario && usuario !== 'Todos') { query += ' AND u.nombres = ?'; params.push(usuario); }
-
-  query += ' ORDER BY v.fecha_hora DESC';
-
-  db.query(query, params, (err, results) => {
+// Listar tipos de comprobantes
+router.get('/comprobantes', (req, res) => {
+  db.query('SELECT * FROM tipos_comprobante', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
-  });
-});
-
-// Obtener detalle de una venta
-router.get('/:id', (req, res) => {
-  const { id } = req.params;
-  const queryVenta = `
-    SELECT 
-      v.*, tc.nombre AS tipo_comprobante,
-      c.nombres_razon_social AS cliente_nombre,
-      u.nombres AS vendedor
-    FROM Ventas v
-    JOIN Tipos_Comprobantes tc ON v.id_tipo_comprobante = tc.id_tipo_comprobante
-    LEFT JOIN Clientes c ON v.id_cliente = c.id_cliente
-    JOIN Usuarios u ON v.id_usuario = u.id_usuario
-    WHERE v.id_venta = ?
-  `;
-  
-  db.query(queryVenta, [id], (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (results.length === 0) return res.status(404).json({ error: 'Venta no encontrada' });
-
-    const venta = results[0];
-    const queryDetalle = `
-      SELECT dv.*, p.nombre_comercial
-      FROM Detalle_Ventas dv
-      JOIN Productos p ON dv.id_producto = p.id_producto
-      WHERE dv.id_venta = ?
-    `;
-
-    db.query(queryDetalle, [id], (err, detalle) => {
-      if (err) return res.status(500).json({ error: err.message });
-      venta.detalle = detalle;
-      res.json(venta);
-    });
   });
 });
 
@@ -118,54 +60,116 @@ router.get('/top-vendidos', (req, res) => {
   });
 });
 
+// Listar ventas con filtros
+router.get('/', (req, res) => {
+  const { desde, hasta, tipo, usuario } = req.query;
+  let query = `
+    SELECT 
+      v.id_venta, v.fecha_hora, v.serie, v.correlativo, v.numero_completo, v.total,
+      tc.nombre AS tipo_comprobante,
+      c.nombres_razon AS cliente_nombre,
+      CONCAT(e.nombres, ' ', e.apellidos) AS vendedor,
+      (SELECT COUNT(*) FROM Detalle_Ventas dv WHERE dv.id_venta = v.id_venta) as cantidad_items
+    FROM Ventas v
+    JOIN Tipos_Comprobante tc ON v.id_tipo_comprobante = tc.id_tipo_comprobante
+    LEFT JOIN Clientes c ON v.id_cliente = c.id_cliente
+    JOIN Usuarios u ON v.id_usuario = u.id_usuario
+    JOIN Empleados e ON u.id_empleado = e.id_empleado
+    WHERE v.estado = 'ACTIVA'
+  `;
+  const params = [];
+
+  if (desde) { query += ' AND DATE(v.fecha_hora) >= ?'; params.push(desde); }
+  if (hasta) { query += ' AND DATE(v.fecha_hora) <= ?'; params.push(hasta); }
+  if (tipo && tipo !== 'Todos') { query += ' AND tc.nombre = ?'; params.push(tipo); }
+  if (usuario && usuario !== 'Todos') { query += ' AND CONCAT(e.nombres, \' \', e.apellidos) = ?'; params.push(usuario); }
+
+  query += ' ORDER BY v.fecha_hora DESC';
+
+  db.query(query, params, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// Obtener detalle de una venta
+router.get('/:id', (req, res) => {
+  const { id } = req.params;
+  const queryVenta = `
+    SELECT 
+      v.*, tc.nombre AS tipo_comprobante,
+      c.nombres_razon AS cliente_nombre,
+      CONCAT(e.nombres, ' ', e.apellidos) AS vendedor
+    FROM Ventas v
+    JOIN Tipos_Comprobante tc ON v.id_tipo_comprobante = tc.id_tipo_comprobante
+    LEFT JOIN Clientes c ON v.id_cliente = c.id_cliente
+    JOIN Usuarios u ON v.id_usuario = u.id_usuario
+    JOIN Empleados e ON u.id_empleado = e.id_empleado
+    WHERE v.id_venta = ?
+  `;
+  
+  db.query(queryVenta, [id], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (results.length === 0) return res.status(404).json({ error: 'Venta no encontrada' });
+
+    const venta = results[0];
+    const queryDetalle = `
+      SELECT dv.*, p.nombre_comercial
+      FROM Detalle_Ventas dv
+      JOIN Productos p ON dv.id_producto = p.id_producto
+      WHERE dv.id_venta = ?
+    `;
+
+    db.query(queryDetalle, [id], (err, detalle) => {
+      if (err) return res.status(500).json({ error: err.message });
+      venta.detalle = detalle;
+      res.json(venta);
+    });
+  });
+});
+
 // Registrar venta
 router.post('/', (req, res) => {
-  const { id_cliente, id_usuario, id_tipo_comprobante, serie_documento, numero_documento, total, detalle } = req.body;
-  
+  const { id_cliente, id_usuario, id_tipo_comprobante, forma_pago, monto_recibido, total, detalle } = req.body;
+
+  // Calcular subtotal e IGV a partir del total (precio ya incluye IGV)
+  const subtotal = parseFloat((total / 1.18).toFixed(2));
+  const igv      = parseFloat((total - subtotal).toFixed(2));
+
   db.beginTransaction((err) => {
     if (err) return res.status(500).json({ error: err.message });
 
+    // serie y correlativo los asigna el trigger automáticamente
     const queryVenta = `
-      INSERT INTO ventas (id_cliente, id_usuario, id_tipo_comprobante, serie_documento, numero_documento, total, fecha_hora) 
-      VALUES (?, ?, ?, ?, ?, ?, NOW())
+      INSERT INTO ventas (id_tipo_comprobante, id_cliente, id_usuario, forma_pago, monto_recibido, subtotal, igv, total)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    
-    db.query(queryVenta, [id_cliente, id_usuario, id_tipo_comprobante, serie_documento, numero_documento, total], (err, results) => {
+
+    db.query(queryVenta, [id_tipo_comprobante, id_cliente, id_usuario, forma_pago || 'CONTADO', monto_recibido || total, subtotal, igv, total], (err, results) => {
       if (err) {
-        return db.rollback(() => {
-          res.status(500).json({ error: err.message });
-        });
+        console.error('Error INSERT ventas:', err);
+        return db.rollback(() => res.status(500).json({ error: err.message }));
       }
 
       const idVenta = results.insertId;
-      const queryDetalle = 'INSERT INTO detalle_ventas (id_venta, id_producto, id_producto_precio, cantidad, precio_unitario, subtotal) VALUES ?';
-      const values = detalle.map(d => [idVenta, d.id_producto, d.id_producto_precio, d.cantidad, d.precio_unitario, d.subtotal]);
+      // detalle_ventas: subtotal es columna generada, no se inserta
+      const queryDetalle = 'INSERT INTO detalle_ventas (id_venta, id_producto, id_precio, cantidad, precio_unitario) VALUES ?';
+      const values = detalle.map(d => [idVenta, d.id_producto, d.id_precio || d.id_producto_precio, d.cantidad, d.precio_unitario]);
 
       db.query(queryDetalle, [values], (err) => {
         if (err) {
-          return db.rollback(() => {
-            res.status(500).json({ error: err.message });
-          });
+          console.error('Error INSERT detalle_ventas:', err);
+          return db.rollback(() => res.status(500).json({ error: err.message }));
         }
 
         db.commit((err) => {
           if (err) {
-            return db.rollback(() => {
-              res.status(500).json({ error: err.message });
-            });
+            return db.rollback(() => res.status(500).json({ error: err.message }));
           }
           res.json({ success: true, id_venta: idVenta });
         });
       });
     });
-  });
-});
-
-// Listar tipos de comprobantes
-router.get('/comprobantes', (req, res) => {
-  db.query('SELECT * FROM tipos_comprobantes', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
   });
 });
 
