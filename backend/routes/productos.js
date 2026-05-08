@@ -182,6 +182,145 @@ router.get('/search', (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/productos/sin-movimiento
+// ─────────────────────────────────────────────────────────────
+router.get('/sin-movimiento', (req, res) => {
+  const query = `
+    SELECT 
+      p.id_producto, p.nombre_comercial,
+      c.nombre AS nombre_categoria,
+      SUM(lo.stock_actual) AS stock_total,
+      MAX(v.fecha_hora) AS ultima_venta,
+      DATEDIFF(CURDATE(), MAX(v.fecha_hora)) AS dias_sin_venta
+    FROM Productos p
+    LEFT JOIN Categorias c ON p.id_categoria = c.id_categoria
+    LEFT JOIN Lotes lo ON p.id_producto = lo.id_producto
+    LEFT JOIN Detalle_Ventas dv ON p.id_producto = dv.id_producto
+    LEFT JOIN Ventas v ON dv.id_venta = v.id_venta
+    WHERE p.estado = 1
+    GROUP BY p.id_producto
+    HAVING dias_sin_venta >= 30 OR ultima_venta IS NULL
+    ORDER BY dias_sin_venta DESC
+    LIMIT 10
+  `;
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: 'Error al obtener productos sin movimiento' });
+    res.json(results);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/productos/resumen-stock
+// ─────────────────────────────────────────────────────────────
+router.get('/resumen-stock', (req, res) => {
+  const query = `
+    SELECT 
+      COUNT(*) as total,
+      SUM(CASE WHEN stock_total > stock_min THEN 1 ELSE 0 END) as normal,
+      SUM(CASE WHEN stock_total <= stock_min AND stock_total > 0 THEN 1 ELSE 0 END) as critico,
+      SUM(CASE WHEN stock_total <= 0 OR stock_total IS NULL THEN 1 ELSE 0 END) as sinStock
+    FROM (
+      SELECT p.id_producto, SUM(lo.stock_actual) as stock_total, MIN(lo.stock_minimo) as stock_min
+      FROM Productos p
+      LEFT JOIN Lotes lo ON p.id_producto = lo.id_producto
+      WHERE p.estado = 1
+      GROUP BY p.id_producto
+    ) as t
+  `;
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: 'Error al obtener resumen de stock' });
+    res.json(results[0]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/productos/vencimientos
+// ─────────────────────────────────────────────────────────────
+router.get('/vencimientos', (req, res) => {
+  const { desde, hasta, categoria, laboratorio } = req.query;
+  let query = `
+    SELECT 
+      p.id_producto, p.nombre_comercial, p.principio_activo,
+      c.nombre AS nombre_categoria,
+      l.nombre AS nombre_laboratorio,
+      lo.numero_lote AS lote, lo.stock_actual, lo.fecha_vencimiento,
+      DATEDIFF(lo.fecha_vencimiento, CURDATE()) AS dias_restantes
+    FROM Lotes lo
+    JOIN Productos p ON lo.id_producto = p.id_producto
+    LEFT JOIN Categorias c ON p.id_categoria = c.id_categoria
+    LEFT JOIN Laboratorios l ON p.id_laboratorio = l.id_laboratorio
+    WHERE p.estado = 1 AND lo.stock_actual > 0
+  `;
+  const params = [];
+
+  if (desde) { query += ' AND lo.fecha_vencimiento >= ?'; params.push(desde); }
+  if (hasta) { query += ' AND lo.fecha_vencimiento <= ?'; params.push(hasta); }
+  if (categoria && categoria !== 'Todos') { query += ' AND c.nombre = ?'; params.push(categoria); }
+  if (laboratorio && laboratorio !== 'Todos') { query += ' AND l.nombre = ?'; params.push(laboratorio); }
+
+  query += ' ORDER BY lo.fecha_vencimiento ASC';
+
+  db.query(query, params, (err, results) => {
+    if (err) return res.status(500).json({ error: 'Error al obtener vencimientos' });
+    res.json(results);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/productos/resumen-vencimientos
+// ─────────────────────────────────────────────────────────────
+router.get('/resumen-vencimientos', (req, res) => {
+  const query = `
+    SELECT 
+      SUM(CASE WHEN DATEDIFF(fecha_vencimiento, CURDATE()) <= 0 THEN 1 ELSE 0 END) as vencidos,
+      SUM(CASE WHEN DATEDIFF(fecha_vencimiento, CURDATE()) BETWEEN 1 AND 7 THEN 1 ELSE 0 END) as vencen7,
+      SUM(CASE WHEN DATEDIFF(fecha_vencimiento, CURDATE()) BETWEEN 1 AND 30 THEN 1 ELSE 0 END) as vencen30,
+      SUM(CASE WHEN DATEDIFF(fecha_vencimiento, CURDATE()) BETWEEN 1 AND 90 THEN 1 ELSE 0 END) as vencen90
+    FROM Lotes
+    WHERE stock_actual > 0
+  `;
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: 'Error al obtener resumen de vencimientos' });
+    res.json(results[0]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/productos/:id/baja
+// ─────────────────────────────────────────────────────────────
+router.post('/:id/baja', (req, res) => {
+  const { id } = req.params;
+  const { motivo, cantidad, observaciones } = req.body;
+  
+  db.beginTransaction((err) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    // Restar del lote más próximo a vencer
+    const queryUpdate = `
+      UPDATE Lotes 
+      SET stock_actual = stock_actual - ? 
+      WHERE id_producto = ? AND stock_actual >= ? 
+      ORDER BY fecha_vencimiento ASC 
+      LIMIT 1
+    `;
+    
+    db.query(queryUpdate, [cantidad, id, cantidad], (err, result) => {
+      if (err || result.affectedRows === 0) {
+        return db.rollback(() => res.status(500).json({ error: 'Error al descontar stock para baja' }));
+      }
+
+      // Registrar en historial de bajas (si existiera la tabla, si no, solo el log)
+      console.log(`Baja registrada: Prod ${id}, Cant ${cantidad}, Motivo ${motivo}, Obs: ${observaciones}`);
+
+      db.commit((err) => {
+        if (err) return db.rollback(() => res.status(500).json({ error: err.message }));
+        res.json({ success: true, message: 'Baja procesada correctamente' });
+      });
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/productos/:id  — Obtener uno
 // ─────────────────────────────────────────────────────────────
 router.get('/:id', (req, res) => {

@@ -10,7 +10,7 @@ import TopVendidosChart from '../components/TopVendidosChart';
 import AlertasVencimiento from '../components/AlertasVencimiento';
 import { useTheme } from '../context/ThemeContext';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5001/api';
 
 // ── KPI Card ──────────────────────────────────────────────────
 const KpiCard = ({ label, value, icon: Icon, gradient, loading, isDark }) => (

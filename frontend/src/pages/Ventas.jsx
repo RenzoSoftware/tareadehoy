@@ -9,10 +9,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Search, Trash2, Save } from 'lucide-react';
 import BuscadorProductos from '../components/BuscadorProductos';
+import { useTheme } from '../context/ThemeContext';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5001/api';
 
 const Ventas = ({ user }) => {
+  const { isDark } = useTheme();
   const [comprobantes, setComprobantes] = useState([]);
   const [tipoComp, setTipoComp]         = useState('1');
   const [docCliente, setDocCliente]     = useState('');
@@ -20,6 +22,28 @@ const Ventas = ({ user }) => {
   const [carrito, setCarrito]           = useState([]);
   const [errorMsg, setErrorMsg]         = useState('');
   const [successMsg, setSuccessMsg]     = useState('');
+
+  // Estilos dinámicos según el tema
+  const s = {
+    card: {
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      borderColor: isDark ? '#334155' : '#EFF6FF',
+    },
+    text: {
+      color: isDark ? '#F1F5F9' : '#1E293B',
+    },
+    muted: {
+      color: isDark ? '#94A3B8' : '#64748B',
+    },
+    input: {
+      backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+      borderColor: isDark ? '#334155' : '#DBEAFE',
+      color: isDark ? '#F1F5F9' : '#1E293B',
+    },
+    tableHeader: {
+      backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+    }
+  };
 
   useEffect(() => {
     axios.get(`${API_BASE}/ventas/comprobantes`)
@@ -145,15 +169,16 @@ const Ventas = ({ user }) => {
         )}
 
         {/* Comprobante y cliente */}
-        <div className="bg-white p-6 rounded-2xl shadow-pharma border border-blue-50 space-y-4">
+        <div className="p-6 rounded-2xl shadow-pharma space-y-4 border" style={s.card}>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold mb-1 text-pharma-text" htmlFor="tipo-comprobante">
+              <label className="block text-sm font-bold mb-1" style={s.text} htmlFor="tipo-comprobante">
                 Tipo Comprobante
               </label>
               <select
                 id="tipo-comprobante"
-                className="w-full border border-blue-100 p-2.5 rounded-xl focus:ring-2 focus:ring-pharma-primary outline-none bg-pharma-bg"
+                className="w-full border p-2.5 rounded-xl outline-none"
+                style={s.input}
                 value={tipoComp}
                 onChange={(e) => setTipoComp(e.target.value)}
               >
@@ -165,14 +190,15 @@ const Ventas = ({ user }) => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-bold mb-1 text-pharma-text" htmlFor="doc-cliente">
+              <label className="block text-sm font-bold mb-1" style={s.text} htmlFor="doc-cliente">
                 Buscar Cliente (DNI/RUC)
               </label>
               <div className="flex gap-2">
                 <input
                   id="doc-cliente"
                   type="text"
-                  className="flex-1 border border-blue-100 p-2.5 rounded-xl focus:ring-2 focus:ring-pharma-primary outline-none bg-pharma-bg"
+                  className="flex-1 border p-2.5 rounded-xl outline-none"
+                  style={s.input}
                   value={docCliente}
                   onChange={(e) => setDocCliente(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && buscarCliente()}
@@ -191,16 +217,16 @@ const Ventas = ({ user }) => {
           </div>
 
           {cliente && (
-            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-              <p className="text-sm font-black text-pharma-text">{cliente.nombres_razon_social}</p>
-              <p className="text-xs text-pharma-muted">Doc: {cliente.numero_documento}</p>
+            <div className="p-3 rounded-xl border" style={{ backgroundColor: isDark ? '#0F172A' : '#EFF6FF', borderColor: isDark ? '#334155' : '#DBEAFE' }}>
+              <p className="text-sm font-black" style={s.text}>{cliente.nombres_razon_social}</p>
+              <p className="text-xs" style={s.muted}>Doc: {cliente.numero_documento}</p>
             </div>
           )}
         </div>
 
         {/* Buscador de productos avanzado */}
-        <div className="bg-white p-6 rounded-2xl shadow-pharma border border-gray-50">
-          <label className="block text-sm font-bold mb-3 text-pharma-text">
+        <div className="p-6 rounded-2xl shadow-pharma border" style={s.card}>
+          <label className="block text-sm font-bold mb-3" style={s.text}>
             Buscar Producto
           </label>
           <BuscadorProductos
@@ -210,37 +236,39 @@ const Ventas = ({ user }) => {
         </div>
 
         {/* Tabla del carrito */}
-        <div className="bg-white rounded-2xl shadow-pharma border border-gray-50 overflow-hidden">
+        <div className="rounded-2xl shadow-pharma border overflow-hidden" style={s.card}>
           <table className="w-full" role="table" aria-label="Carrito de venta">
-            <thead className="bg-pharma-bg">
+            <thead style={s.tableHeader}>
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-black text-pharma-muted uppercase tracking-wider">Producto</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-black text-pharma-muted uppercase tracking-wider">Precio</th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-black text-pharma-muted uppercase tracking-wider">Cant.</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-black text-pharma-muted uppercase tracking-wider">Subtotal</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-black uppercase tracking-wider" style={s.muted}>Producto</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-black uppercase tracking-wider" style={s.muted}>Precio</th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-black uppercase tracking-wider" style={s.muted}>Cant.</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-black uppercase tracking-wider" style={s.muted}>Subtotal</th>
                 <th scope="col" className="px-6 py-3" aria-label="Acciones"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-50">
+            <tbody className="divide-y" style={{ borderColor: isDark ? '#334155' : '#EFF6FF' }}>
               {carrito.map((item, index) => (
                 <tr key={index} role="row">
-                  <td className="px-6 py-4 text-sm font-bold text-pharma-text">{item.nombre_comercial}</td>
-                  <td className="px-6 py-4 text-sm text-right text-pharma-muted">
+                  <td className="px-6 py-4 text-sm font-bold" style={s.text}>{item.nombre_comercial}</td>
+                  <td className="px-6 py-4 text-sm text-right" style={s.muted}>
                     S/ {item.precio_unitario.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 text-sm text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => actualizarCantidad(index, item.cantidad - 1)}
-                        className="w-6 h-6 rounded-lg bg-blue-50 hover:bg-blue-100 text-pharma-text font-black text-xs transition-colors"
+                        className="w-6 h-6 rounded-lg font-black text-xs transition-colors"
+                        style={{ backgroundColor: isDark ? '#0F172A' : '#EFF6FF', color: isDark ? '#F1F5F9' : '#1E293B' }}
                         aria-label={`Reducir cantidad de ${item.nombre_comercial}`}
                       >
                         −
                       </button>
-                      <span className="font-black w-6 text-center">{item.cantidad}</span>
+                      <span className="font-black w-6 text-center" style={s.text}>{item.cantidad}</span>
                       <button
                         onClick={() => actualizarCantidad(index, item.cantidad + 1)}
-                        className="w-6 h-6 rounded-lg bg-blue-50 hover:bg-blue-100 text-pharma-text font-black text-xs transition-colors"
+                        className="w-6 h-6 rounded-lg font-black text-xs transition-colors"
+                        style={{ backgroundColor: isDark ? '#0F172A' : '#EFF6FF', color: isDark ? '#F1F5F9' : '#1E293B' }}
                         aria-label={`Aumentar cantidad de ${item.nombre_comercial}`}
                       >
                         +
@@ -253,7 +281,8 @@ const Ventas = ({ user }) => {
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => eliminarItem(index)}
-                      className="text-pharma-muted hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50"
+                      className="transition-colors p-1 rounded-lg hover:bg-red-500 hover:text-white"
+                      style={{ color: isDark ? '#94A3B8' : '#64748B' }}
                       aria-label={`Eliminar ${item.nombre_comercial} del carrito`}
                     >
                       <Trash2 size={18} aria-hidden="true" />
@@ -263,7 +292,7 @@ const Ventas = ({ user }) => {
               ))}
               {carrito.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-pharma-muted italic text-sm">
+                  <td colSpan="5" className="px-6 py-10 text-center italic text-sm" style={s.muted}>
                     No hay productos en el detalle
                   </td>
                 </tr>
@@ -275,21 +304,21 @@ const Ventas = ({ user }) => {
 
       {/* Columna Derecha: Resumen */}
       <div className="space-y-6">
-        <div className="bg-white p-6 rounded-2xl shadow-pharma border border-blue-50 space-y-4">
-          <h3 className="text-lg font-black text-pharma-text border-b border-blue-50 pb-3">Resumen</h3>
+        <div className="p-6 rounded-2xl shadow-pharma border space-y-4" style={s.card}>
+          <h3 className="text-lg font-black border-b pb-3" style={{ ...s.text, borderColor: isDark ? '#334155' : '#EFF6FF' }}>Resumen</h3>
 
           <div className="space-y-2">
-            <div className="flex justify-between text-sm text-pharma-muted">
+            <div className="flex justify-between text-sm" style={s.muted}>
               <span>Subtotal</span>
               <span>S/ {(total / 1.18).toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-sm text-pharma-muted">
+            <div className="flex justify-between text-sm" style={s.muted}>
               <span>IGV (18%)</span>
               <span>S/ {(total - total / 1.18).toFixed(2)}</span>
             </div>
           </div>
 
-          <div className="flex justify-between text-2xl font-black text-pharma-text pt-2 border-t border-blue-50">
+          <div className="flex justify-between text-2xl font-black pt-2 border-t" style={{ ...s.text, borderColor: isDark ? '#334155' : '#EFF6FF' }}>
             <span>Total:</span>
             <span className="text-gradient-cyan">S/ {total.toFixed(2)}</span>
           </div>

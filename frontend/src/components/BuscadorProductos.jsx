@@ -7,7 +7,7 @@ import axios from 'axios';
 import { Search, Package, AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5001/api';
 
 const agruparPorPrincipioActivo = (productos) =>
   productos.reduce((acc, p) => {

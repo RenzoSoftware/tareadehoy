@@ -8,7 +8,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Package, Users,
   LogOut, Activity, Settings, ChevronDown, ChevronUp,
-  Sun, Moon, Bell, Key, User,
+  Sun, Moon, Bell, Key, User, Box, Truck, BarChart2, List, Calendar, DollarSign
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -16,11 +16,40 @@ import { useTheme } from '../context/ThemeContext';
 
 function cn(...inputs) { return twMerge(clsx(inputs)); }
 
-const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard',  path: '/' },
-  { icon: ShoppingCart,    label: 'Ventas',      path: '/ventas' },
-  { icon: Package,         label: 'Productos',   path: '/productos' },
-  { icon: Users,           label: 'Clientes',    path: '/clientes' },
+const sections = [
+  {
+    title: 'Menú Principal',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard',  path: '/' },
+      { icon: ShoppingCart,    label: 'Ventas',      path: '/ventas' },
+      { icon: Package,         label: 'Productos',   path: '/productos' },
+      { icon: Users,           label: 'Clientes',    path: '/clientes' },
+    ]
+  },
+  {
+    title: 'Almacén',
+    items: [
+      { icon: Box,             label: 'Inventario',   path: '/inventario' },
+      { icon: Truck,           label: 'Proveedores',  path: '/proveedores' },
+      { icon: ShoppingCart,    label: 'Compras',      path: '/compras' },
+    ]
+  },
+  {
+    title: 'Reportes',
+    items: [
+      { icon: BarChart2,       label: 'Reporte de Ventas', path: '/reportes/ventas' },
+      { icon: List,            label: 'Reporte de Stock',  path: '/reportes/stock' },
+      { icon: Calendar,        label: 'Vencimientos',      path: '/reportes/vencimientos' },
+    ]
+  },
+  {
+    title: 'Administración',
+    items: [
+      { icon: Users,           label: 'Usuarios',      path: '/usuarios' },
+      { icon: DollarSign,      label: 'Caja del Día',  path: '/caja' },
+      { icon: Settings,        label: 'Configuración', path: '/configuracion' },
+    ]
+  }
 ];
 
 const Sidebar = ({ onLogout, user }) => {
@@ -69,47 +98,51 @@ const Sidebar = ({ onLogout, user }) => {
       </div>
 
       {/* ── Menú principal ── */}
-      <nav className="flex-1 px-3 py-5 space-y-0.5" role="navigation">
-        <p className="px-3 text-[9px] font-black uppercase tracking-[0.2em] mb-3" style={{ color: '#475569' }}>
-          Menú Principal
-        </p>
-        {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              aria-current={isActive ? 'page' : undefined}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group relative"
-              style={{
-                background: isActive ? S.active : 'transparent',
-                borderLeft: isActive ? `3px solid ${S.activeBorder}` : '3px solid transparent',
-              }}
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = S.hover; }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-            >
-              <item.icon
-                size={17}
-                style={{ color: isActive ? S.iconActive : S.iconMuted }}
-                className="shrink-0 transition-colors group-hover:!text-blue-300"
-                aria-hidden="true"
-              />
-              <span
-                className="text-sm font-semibold transition-colors group-hover:!text-white"
-                style={{ color: isActive ? S.textActive : S.text }}
-              >
-                {item.label}
-              </span>
-              {isActive && (
-                <span
-                  className="ml-auto w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: S.activeBorder }}
-                  aria-hidden="true"
-                />
-              )}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-5 space-y-6 overflow-y-auto" role="navigation">
+        {sections.map((section, idx) => (
+          <div key={idx} className="space-y-1">
+            <p className="px-3 text-[9px] font-black uppercase tracking-[0.2em] mb-2 opacity-70" style={{ color: '#475569' }}>
+              {section.title}
+            </p>
+            {section.items.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  aria-current={isActive ? 'page' : undefined}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-150 group relative"
+                  style={{
+                    background: isActive ? S.active : 'transparent',
+                    borderLeft: isActive ? `3px solid ${S.activeBorder}` : '3px solid transparent',
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = S.hover; }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <item.icon
+                    size={17}
+                    style={{ color: isActive ? S.iconActive : S.iconMuted }}
+                    className="shrink-0 transition-colors group-hover:!text-blue-300"
+                    aria-hidden="true"
+                  />
+                  <span
+                    className="text-sm font-semibold transition-colors group-hover:!text-white"
+                    style={{ color: isActive ? S.textActive : S.text }}
+                  >
+                    {item.label}
+                  </span>
+                  {isActive && (
+                    <span
+                      className="ml-auto w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: S.activeBorder }}
+                      aria-hidden="true"
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* ── Configuración de usuario ── */}
@@ -190,28 +223,6 @@ const Sidebar = ({ onLogout, user }) => {
                 >
                   {isDark ? 'OSCURO' : 'CLARO'}
                 </span>
-              </button>
-
-              {/* Notificaciones */}
-              <button
-                className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left"
-                style={{ color: S.text }}
-                onMouseEnter={e => e.currentTarget.style.background = S.hover}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <Bell size={14} style={{ color: '#60A5FA' }} aria-hidden="true" />
-                <span className="text-xs font-semibold">Notificaciones</span>
-              </button>
-
-              {/* Cambiar contraseña */}
-              <button
-                className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left"
-                style={{ color: S.text }}
-                onMouseEnter={e => e.currentTarget.style.background = S.hover}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <Key size={14} style={{ color: '#60A5FA' }} aria-hidden="true" />
-                <span className="text-xs font-semibold">Cambiar Contraseña</span>
               </button>
             </div>
 

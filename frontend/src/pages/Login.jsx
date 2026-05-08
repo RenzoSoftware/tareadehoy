@@ -18,7 +18,7 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', { usuario, contrasena });
+      const res = await axios.post('http://localhost:5001/api/auth/login', { usuario, contrasena });
       if (res.data.success) onLogin(res.data.user);
     } catch (err) {
       if (err.response) setError(err.response.data.message || 'Credenciales inválidas');

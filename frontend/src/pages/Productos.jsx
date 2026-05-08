@@ -18,7 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 
 function cn(...inputs) { return twMerge(clsx(inputs)); }
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5001/api';
 
 const FILTROS = [
   { key: 'todos',     label: 'Todos' },

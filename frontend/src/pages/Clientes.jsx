@@ -14,7 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 
 function cn(...inputs) { return twMerge(clsx(inputs)); }
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:5001/api';
 
 const FORM_INICIAL = {
   id_tipo_doc: '1', numero_documento: '', nombres_razon: '',
