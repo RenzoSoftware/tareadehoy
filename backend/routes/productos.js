@@ -26,7 +26,32 @@ const validarProducto = (body) => {
 // ─────────────────────────────────────────────────────────────
 // GET /api/productos  — Listar todos
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// GET /api/productos  — Listar todos con filtros avanzados
+// ─────────────────────────────────────────────────────────────
 router.get('/', (req, res) => {
+  const { categoria, stock, orden, busqueda } = req.query;
+  
+  let whereClauses = ['p.estado = 1'];
+  let params = [];
+
+  if (categoria && categoria !== 'Todos') {
+    whereClauses.push('c.nombre = ?');
+    params.push(categoria);
+  }
+
+  if (busqueda) {
+    whereClauses.push('(p.nombre_comercial LIKE ? OR p.principio_activo LIKE ?)');
+    params.push(`%${busqueda}%`, `%${busqueda}%`);
+  }
+
+  let orderBy = 'p.nombre_comercial ASC';
+  if (orden === 'stock_asc') orderBy = 'stock_total ASC';
+  if (orden === 'stock_desc') orderBy = 'stock_total DESC';
+  if (orden === 'nombre_desc') orderBy = 'p.nombre_comercial DESC';
+  if (orden === 'precio_asc') orderBy = 'precio_base ASC';
+  if (orden === 'precio_desc') orderBy = 'precio_base DESC';
+
   const query = `
     SELECT
       p.id_producto, p.nombre_comercial, p.principio_activo, p.concentracion,
@@ -35,21 +60,27 @@ router.get('/', (req, res) => {
       c.nombre  AS nombre_categoria,
       l.nombre  AS nombre_laboratorio,
       pres.nombre AS nombre_presentacion,
-      SUM(lo.stock_actual)  AS stock_total,
-      MIN(lo.stock_minimo)  AS stock_minimo,
+      COALESCE(SUM(lo.stock_actual), 0)  AS stock_total,
+      COALESCE(MIN(lo.stock_minimo), 0)  AS stock_minimo,
       MIN(lo.fecha_vencimiento) AS proximo_vencimiento,
-      DATEDIFF(MIN(lo.fecha_vencimiento), CURDATE()) AS dias_para_vencer
-    FROM Productos p
-    LEFT JOIN Categorias     c    ON p.id_categoria    = c.id_categoria
-    LEFT JOIN Laboratorios   l    ON p.id_laboratorio  = l.id_laboratorio
-    LEFT JOIN Presentaciones pres ON p.id_presentacion = pres.id_presentacion
-    LEFT JOIN Lotes          lo   ON p.id_producto     = lo.id_producto
-    WHERE p.estado = 1
+      DATEDIFF(MIN(lo.fecha_vencimiento), CURDATE()) AS dias_para_vencer,
+      (SELECT MIN(precio_venta) FROM producto_precios WHERE id_producto = p.id_producto AND activo = 1) as precio_base
+    FROM productos p
+    LEFT JOIN categorias     c    ON p.id_categoria    = c.id_categoria
+    LEFT JOIN laboratorios   l    ON p.id_laboratorio  = l.id_laboratorio
+    LEFT JOIN presentaciones pres ON p.id_presentacion = pres.id_presentacion
+    LEFT JOIN lotes          lo   ON p.id_producto     = lo.id_producto
+    WHERE ${whereClauses.join(' AND ')}
     GROUP BY p.id_producto
-    ORDER BY p.nombre_comercial ASC
+    ${stock === 'critico' ? 'HAVING stock_total <= stock_minimo' : ''}
+    ORDER BY ${orderBy}
   `;
-  db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ error: 'Error al obtener productos' });
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error('❌ Error en Query de Productos:', err.message);
+      return res.status(500).json({ error: 'Error al obtener productos', details: err.message });
+    }
     res.json(results);
   });
 });
@@ -59,9 +90,9 @@ router.get('/', (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.get('/catalogos', (req, res) => {
   // Ejecutamos las 3 queries en paralelo y esperamos todas
-  const sqlCategorias     = 'SELECT id_categoria AS id, nombre FROM Categorias WHERE estado = 1 ORDER BY nombre';
-  const sqlLaboratorios   = 'SELECT id_laboratorio AS id, nombre FROM Laboratorios WHERE estado = 1 ORDER BY nombre';
-  const sqlPresentaciones = 'SELECT id_presentacion AS id, nombre FROM Presentaciones ORDER BY nombre';
+  const sqlCategorias     = 'SELECT id_categoria AS id, nombre FROM categorias WHERE estado = 1 ORDER BY nombre';
+  const sqlLaboratorios   = 'SELECT id_laboratorio AS id, nombre FROM laboratorios WHERE estado = 1 ORDER BY nombre';
+  const sqlPresentaciones = 'SELECT id_presentacion AS id, nombre FROM presentaciones ORDER BY nombre';
 
   let done = 0;
   const result = {};

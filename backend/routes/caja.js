@@ -5,7 +5,7 @@ const { checkAuth, checkRole } = require('../middleware/auth');
 
 // GET /api/caja/hoy - Estado de la caja actual con totales
 router.get('/hoy', checkAuth, (req, res) => {
-    const query = 'SELECT * FROM Cajas WHERE estado = "Abierta" ORDER BY id_caja DESC LIMIT 1';
+    const query = 'SELECT * FROM cajas WHERE estado = "Abierta" ORDER BY id_caja DESC LIMIT 1';
     db.query(query, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         
@@ -24,7 +24,7 @@ router.get('/hoy', checkAuth, (req, res) => {
                 SUM(CASE WHEN (forma_pago = 'YAPE' OR forma_pago = 'PLIN') AND tipo = 'INGRESO' THEN monto ELSE 0 END) as ventas_digital,
                 SUM(CASE WHEN tipo = 'INGRESO' THEN monto ELSE 0 END) as total_ingresos,
                 SUM(CASE WHEN tipo = 'EGRESO' THEN monto ELSE 0 END) as total_egresos
-            FROM Movimientos_Caja 
+            FROM movimientos_caja 
             WHERE DATE(fecha_hora) = ?
         `;
 
@@ -43,8 +43,8 @@ router.get('/movimientos', checkAuth, (req, res) => {
     const { fecha } = req.query;
     const query = `
         SELECT m.*, u.username as usuario 
-        FROM Movimientos_Caja m 
-        LEFT JOIN Usuarios u ON m.id_usuario = u.id_usuario 
+        FROM movimientos_caja m 
+        LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario 
         WHERE DATE(m.fecha_hora) = ? 
         ORDER BY m.fecha_hora DESC
     `;
@@ -59,7 +59,7 @@ router.post('/abrir', checkAuth, (req, res) => {
     const { monto_inicial, observaciones } = req.body;
     const id_usuario = req.headers['x-user-id'] || 1;
     
-    const query = 'INSERT INTO Cajas (monto_inicial, observaciones, estado, id_usuario, fecha_apertura) VALUES (?, ?, "Abierta", ?, NOW())';
+    const query = 'INSERT INTO cajas (monto_inicial, observaciones, estado, id_usuario, fecha_apertura) VALUES (?, ?, "Abierta", ?, NOW())';
     db.query(query, [monto_inicial, observaciones, id_usuario], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ id: result.insertId, message: 'Caja abierta' });
@@ -70,11 +70,11 @@ router.post('/abrir', checkAuth, (req, res) => {
 router.post('/cerrar', checkAuth, (req, res) => {
     const { monto_contado, observaciones } = req.body;
     
-    db.query('SELECT id_caja FROM Cajas WHERE estado = "Abierta" ORDER BY id_caja DESC LIMIT 1', (err, results) => {
+    db.query('SELECT id_caja FROM cajas WHERE estado = "Abierta" ORDER BY id_caja DESC LIMIT 1', (err, results) => {
         if (err || results.length === 0) return res.status(400).json({ error: 'No hay una caja abierta para cerrar' });
         
         const id_caja = results[0].id_caja;
-        const query = 'UPDATE Cajas SET monto_final = ?, observaciones_cierre = ?, estado = "Cerrada", fecha_cierre = NOW() WHERE id_caja = ?';
+        const query = 'UPDATE cajas SET monto_final = ?, observaciones_cierre = ?, estado = "Cerrada", fecha_cierre = NOW() WHERE id_caja = ?';
         
         db.query(query, [monto_contado, observaciones, id_caja], (err, result) => {
             if (err) return res.status(500).json({ error: err.message });
@@ -88,7 +88,7 @@ router.post('/movimiento', checkAuth, (req, res) => {
     const { tipo, categoria, monto, descripcion, forma_pago } = req.body;
     const id_usuario = req.headers['x-user-id'] || 1;
 
-    const query = 'INSERT INTO Movimientos_Caja (tipo, categoria, monto, descripcion, forma_pago, id_usuario, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, NOW())';
+    const query = 'INSERT INTO movimientos_caja (tipo, categoria, monto, descripcion, forma_pago, id_usuario, fecha_hora) VALUES (?, ?, ?, ?, ?, ?, NOW())';
     db.query(query, [tipo, categoria, monto, descripcion, forma_pago, id_usuario], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: 'Movimiento registrado' });

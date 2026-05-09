@@ -28,9 +28,12 @@ router.get('/resumen', (req, res) => {
 
 // Resumen de ventas del día
 router.get('/resumen-hoy', (req, res) => {
-  const query = 'SELECT SUM(total) as totalVentas, COUNT(*) as cantidadVentas FROM Ventas WHERE DATE(fecha_hora) = CURDATE() AND estado = "ACTIVA"';
+  const query = 'SELECT SUM(total) as totalVentas, COUNT(*) as cantidadVentas FROM ventas WHERE DATE(fecha_hora) = CURDATE() AND estado = "ACTIVA"';
   db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('❌ Error en Query de Resumen Ventas:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
     res.json(results[0]);
   });
 });
@@ -42,9 +45,9 @@ router.get('/top-vendidos', (req, res) => {
     SELECT 
       p.nombre_comercial,
       SUM(dv.cantidad) as total_vendido
-    FROM Detalle_Ventas dv
-    JOIN Productos p ON dv.id_producto = p.id_producto
-    JOIN Ventas v ON dv.id_venta = v.id_venta
+    FROM detalle_ventas dv
+    JOIN productos p ON dv.id_producto = p.id_producto
+    JOIN ventas v ON dv.id_venta = v.id_venta
     WHERE v.fecha_hora >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
       AND v.estado = 'ACTIVA'
     GROUP BY p.id_producto
@@ -54,7 +57,7 @@ router.get('/top-vendidos', (req, res) => {
   
   db.query(query, [parseInt(dias)], (err, results) => {
     if (err) {
-      console.error('Error al obtener top vendidos:', err);
+      console.error('❌ Error en Query de Top Vendidos:', err.message);
       return res.status(500).json({ error: err.message });
     }
     res.json(results);
@@ -70,12 +73,12 @@ router.get('/', (req, res) => {
       tc.nombre AS tipo_comprobante,
       c.nombres_razon AS cliente_nombre,
       CONCAT(e.nombres, ' ', e.apellidos) AS vendedor,
-      (SELECT COUNT(*) FROM Detalle_Ventas dv WHERE dv.id_venta = v.id_venta) as cantidad_items
-    FROM Ventas v
-    JOIN Tipos_Comprobante tc ON v.id_tipo_comprobante = tc.id_tipo_comprobante
-    LEFT JOIN Clientes c ON v.id_cliente = c.id_cliente
-    JOIN Usuarios u ON v.id_usuario = u.id_usuario
-    JOIN Empleados e ON u.id_empleado = e.id_empleado
+      (SELECT COUNT(*) FROM detalle_ventas dv WHERE dv.id_venta = v.id_venta) as cantidad_items
+    FROM ventas v
+    JOIN tipos_comprobante tc ON v.id_tipo_comprobante = tc.id_tipo_comprobante
+    LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
+    JOIN usuarios u ON v.id_usuario = u.id_usuario
+    JOIN empleados e ON u.id_empleado = e.id_empleado
     WHERE v.estado = 'ACTIVA'
   `;
   const params = [];
@@ -101,11 +104,11 @@ router.get('/:id', (req, res) => {
       v.*, tc.nombre AS tipo_comprobante,
       c.nombres_razon AS cliente_nombre,
       CONCAT(e.nombres, ' ', e.apellidos) AS vendedor
-    FROM Ventas v
-    JOIN Tipos_Comprobante tc ON v.id_tipo_comprobante = tc.id_tipo_comprobante
-    LEFT JOIN Clientes c ON v.id_cliente = c.id_cliente
-    JOIN Usuarios u ON v.id_usuario = u.id_usuario
-    JOIN Empleados e ON u.id_empleado = e.id_empleado
+    FROM ventas v
+    JOIN tipos_comprobante tc ON v.id_tipo_comprobante = tc.id_tipo_comprobante
+    LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
+    JOIN usuarios u ON v.id_usuario = u.id_usuario
+    JOIN empleados e ON u.id_empleado = e.id_empleado
     WHERE v.id_venta = ?
   `;
   
@@ -116,8 +119,8 @@ router.get('/:id', (req, res) => {
     const venta = results[0];
     const queryDetalle = `
       SELECT dv.*, p.nombre_comercial
-      FROM Detalle_Ventas dv
-      JOIN Productos p ON dv.id_producto = p.id_producto
+      FROM detalle_ventas dv
+      JOIN productos p ON dv.id_producto = p.id_producto
       WHERE dv.id_venta = ?
     `;
 
@@ -148,26 +151,38 @@ router.post('/', (req, res) => {
 
     db.query(queryVenta, [id_tipo_comprobante, id_cliente, id_usuario, forma_pago || 'CONTADO', monto_recibido || total, subtotal, igv, total], (err, results) => {
       if (err) {
-        console.error('Error INSERT ventas:', err);
+        console.error('❌ Error INSERT ventas:', err.message);
         return db.rollback(() => res.status(500).json({ error: err.message }));
       }
 
       const idVenta = results.insertId;
-      // detalle_ventas: subtotal es columna generada, no se inserta
       const queryDetalle = 'INSERT INTO detalle_ventas (id_venta, id_producto, id_precio, cantidad, precio_unitario) VALUES ?';
       const values = detalle.map(d => [idVenta, d.id_producto, d.id_precio || d.id_producto_precio, d.cantidad, d.precio_unitario]);
 
       db.query(queryDetalle, [values], (err) => {
         if (err) {
-          console.error('Error INSERT detalle_ventas:', err);
+          console.error('❌ Error INSERT detalle_ventas:', err.message);
           return db.rollback(() => res.status(500).json({ error: err.message }));
         }
 
-        db.commit((err) => {
+        // ── Integración con Caja ──
+        const queryMov = `
+          INSERT INTO movimientos_caja (tipo, categoria, monto, descripcion, forma_pago, id_usuario, fecha_hora)
+          VALUES ('INGRESO', 'Venta', ?, ?, ?, ?, NOW())
+        `;
+        const descMov = `Venta #${idVenta} - ${forma_pago || 'CONTADO'}`;
+        
+        db.query(queryMov, [total, descMov, forma_pago || 'EFECTIVO', id_usuario], (err) => {
           if (err) {
-            return db.rollback(() => res.status(500).json({ error: err.message }));
+            console.error('❌ Error INSERT movimientos_caja:', err.message);
           }
-          res.json({ success: true, id_venta: idVenta });
+
+          db.commit((err) => {
+            if (err) {
+              return db.rollback(() => res.status(500).json({ error: err.message }));
+            }
+            res.json({ success: true, id_venta: idVenta });
+          });
         });
       });
     });

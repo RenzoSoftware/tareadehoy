@@ -10,10 +10,14 @@ const connection = mysql.createConnection({
 
 connection.connect((err) => {
   if (err) {
-    console.error('Error al conectar a la base de datos:', err);
+    console.error('❌ ERROR DE CONEXIÓN A DB:');
+    console.error('Mensaje:', err.message);
+    console.error('Código:', err.code);
+    console.error('Host:', process.env.DB_HOST || 'localhost');
+    console.error('Base de datos:', process.env.DB_NAME || 'boticanovasalud');
     return;
   }
-  console.log('Conectado exitosamente a MySQL');
+  console.log('✅ Conectado exitosamente a MySQL: ' + (process.env.DB_NAME || 'boticanovasalud'));
 });
 
 module.exports = connection;

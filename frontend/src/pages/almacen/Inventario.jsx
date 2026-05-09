@@ -19,8 +19,10 @@ const Inventario = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('Todos');
   const [filtroStock, setFiltroStock] = useState('Todos');
+  const [ordenamiento, setOrdenamiento] = useState('nombre_asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [categorias, setCategorias] = useState([]);
 
   // Estados para Modales
   const [showModal, setShowModal] = useState(false);
@@ -74,8 +76,20 @@ const Inventario = () => {
   const fetchProductos = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/productos`);
-      setProductos(res.data);
+      // Construir params para la API
+      const params = new URLSearchParams();
+      if (filtroCategoria !== 'Todos') params.append('categoria', filtroCategoria);
+      if (filtroStock === 'Stock crítico') params.append('stock', 'critico');
+      if (searchTerm) params.append('busqueda', searchTerm);
+      params.append('orden', ordenamiento);
+
+      const [resProd, resCat] = await Promise.all([
+        axios.get(`${API_BASE}/productos?${params.toString()}`),
+        axios.get(`${API_BASE}/catalogos/categorias`)
+      ]);
+      
+      setProductos(resProd.data);
+      setCategorias(resCat.data);
       setError(null);
     } catch (err) {
       setError('Error al conectar con el servidor');
@@ -85,7 +99,12 @@ const Inventario = () => {
     }
   };
 
-  useEffect(() => { fetchProductos(); }, []);
+  useEffect(() => { 
+    const debounce = setTimeout(() => {
+      fetchProductos();
+    }, 300);
+    return () => clearTimeout(debounce);
+  }, [searchTerm, filtroCategoria, filtroStock, ordenamiento]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -119,29 +138,14 @@ const Inventario = () => {
     }
   };
 
-  // --- Filtrado y Búsqueda ---
-  const filteredItems = productos.filter(p => {
-    const matchesSearch = p.nombre_comercial?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          p.id_producto?.toString().includes(searchTerm);
-    const matchesCat = filtroCategoria === 'Todos' || p.nombre_categoria === filtroCategoria;
-    
-    let matchesStock = true;
-    if (filtroStock === 'Stock crítico') matchesStock = p.stock_actual_unidades > 0 && p.stock_actual_unidades <= p.stock_minimo_unidades;
-    if (filtroStock === 'Sin stock') matchesStock = p.stock_actual_unidades <= 0;
-    if (filtroStock === 'Stock normal') matchesStock = p.stock_actual_unidades > p.stock_minimo_unidades;
-
-    return matchesSearch && matchesCat && matchesStock;
-  });
+  // --- Filtrado y Búsqueda (Ahora manejado mayormente por el Backend) ---
+  const filteredItems = productos;
 
   // --- Cálculos de Resumen ---
-  const totalProductos = filteredItems.length;
-  const stockCritico = productos.filter(p => p.stock_actual_unidades <= 5).length;
-  const porVencer = productos.filter(p => {
-    if (!p.fecha_vencimiento) return false;
-    const days = (new Date(p.fecha_vencimiento) - new Date()) / (1000 * 60 * 60 * 24);
-    return days > 0 && days <= 30;
-  }).length;
-  const valorInventario = productos.reduce((acc, p) => acc + (p.stock_actual_unidades * (p.precio_compra || 0)), 0);
+  const totalProductos = productos.length;
+  const stockCriticoCount = productos.filter(p => p.stock_total <= p.stock_minimo).length;
+  const porVencerCount = productos.filter(p => p.dias_para_vencer > 0 && p.dias_para_vencer <= 30).length;
+  const valorInventario = productos.reduce((acc, p) => acc + (p.stock_total * (p.precio_base || 0)), 0);
 
   // --- Paginación ---
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -165,11 +169,11 @@ const Inventario = () => {
         </div>
         <div style={s.statCard('#ef4444')}>
           <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>STOCK CRÍTICO</span>
-          <span style={{ fontSize: '24px', fontWeight: '900', color: '#ef4444' }}>{stockCritico}</span>
+          <span style={{ fontSize: '24px', fontWeight: '900', color: '#ef4444' }}>{stockCriticoCount}</span>
         </div>
         <div style={s.statCard('#f59e0b')}>
           <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>POR VENCER</span>
-          <span style={{ fontSize: '24px', fontWeight: '900', color: '#f59e0b' }}>{porVencer}</span>
+          <span style={{ fontSize: '24px', fontWeight: '900', color: '#f59e0b' }}>{porVencerCount}</span>
         </div>
         <div style={s.statCard('#10b981')}>
           <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>VALOR TOTAL</span>
@@ -189,19 +193,23 @@ const Inventario = () => {
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          <select style={{ ...s.input, width: '200px' }} value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
-            <option>Todos</option>
-            <option>Medicamentos</option>
-            <option>Vitaminas</option>
-            <option>Antibióticos</option>
-            <option>Cremas</option>
-            <option>Otros</option>
+          <select style={{ ...s.input, width: '180px' }} value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
+            <option value="Todos">Todas las Categorías</option>
+            {categorias.map(cat => (
+              <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>
+            ))}
           </select>
-          <select style={{ ...s.input, width: '200px' }} value={filtroStock} onChange={e => setFiltroStock(e.target.value)}>
-            <option>Todos</option>
-            <option>Stock normal</option>
-            <option>Stock crítico</option>
-            <option>Sin stock</option>
+          <select style={{ ...s.input, width: '150px' }} value={filtroStock} onChange={e => setFiltroStock(e.target.value)}>
+            <option value="Todos">Todo el Stock</option>
+            <option value="Stock crítico">Stock crítico</option>
+          </select>
+          <select style={{ ...s.input, width: '180px' }} value={ordenamiento} onChange={e => setOrdenamiento(e.target.value)}>
+            <option value="nombre_asc">Nombre (A-Z)</option>
+            <option value="nombre_desc">Nombre (Z-A)</option>
+            <option value="stock_asc">Menor Stock primero</option>
+            <option value="stock_desc">Mayor Stock primero</option>
+            <option value="precio_asc">Menor Precio primero</option>
+            <option value="precio_desc">Mayor Precio primero</option>
           </select>
           <button style={s.button()} onClick={() => { setEditingProduct(null); setFormData({id_producto:'', nombre_comercial:'', id_categoria:'', id_laboratorio:'', principio_activo:'', id_presentacion:'', stock_actual_unidades:0, stock_minimo_unidades:5, precio_compra:0, precio_venta:0, fecha_vencimiento:'', requiere_receta:false}); setShowModal(true); }}>
             <Plus size={18}/> Nuevo Producto
@@ -233,8 +241,8 @@ const Inventario = () => {
               </thead>
               <tbody>
                 {currentItems.map(p => {
-                  const isCritico = p.stock_actual_unidades <= p.stock_minimo_unidades;
-                  const isAgotado = p.stock_actual_unidades <= 0;
+                  const isCritico = p.stock_total <= p.stock_minimo;
+                  const isAgotado = p.stock_total <= 0;
                   return (
                     <tr key={p.id_producto} style={{ backgroundColor: isDark ? 'transparent' : 'transparent', borderBottom: `1px solid ${isDark ? '#334155' : '#E2E8F0'}` }}>
                       <td style={s.td}><span style={{ fontFamily: 'monospace', color: isDark ? '#94a3b8' : '#64748b' }}>#{p.id_producto}</span></td>
@@ -245,11 +253,11 @@ const Inventario = () => {
                       <td style={s.td}>{p.nombre_categoria}</td>
                       <td style={s.td}>{p.nombre_laboratorio}</td>
                       <td style={s.td}>
-                        <span style={{ fontWeight: '900', color: isCritico ? '#ef4444' : 'inherit' }}>{p.stock_actual_unidades}</span>
-                        <span style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#64748b', marginLeft: '4px' }}>/ {p.stock_minimo_unidades}</span>
+                        <span style={{ fontWeight: '900', color: isCritico ? '#ef4444' : 'inherit' }}>{p.stock_total || 0}</span>
+                        <span style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#64748b', marginLeft: '4px' }}>/ {p.stock_minimo || 0}</span>
                       </td>
-                      <td style={s.td}>S/ {p.precio_venta?.toFixed(2)}</td>
-                      <td style={s.td}>{p.fecha_vencimiento ? new Date(p.fecha_vencimiento).toLocaleDateString() : '-'}</td>
+                      <td style={s.td}>S/ {p.precio_base?.toFixed(2) || '0.00'}</td>
+                      <td style={s.td}>{p.proximo_vencimiento ? new Date(p.proximo_vencimiento).toLocaleDateString() : '-'}</td>
                       <td style={s.td}>
                         {isAgotado ? (
                           <span style={s.badge('#7f1d1d', '#f87171')}>SIN STOCK</span>

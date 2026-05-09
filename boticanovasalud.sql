@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 06-05-2026 a las 04:04:45
+-- Tiempo de generación: 10-05-2026 a las 01:05:49
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.0.30
 
@@ -111,6 +111,24 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `cajas`
+--
+
+CREATE TABLE `cajas` (
+  `id_caja` int(11) NOT NULL,
+  `monto_inicial` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `monto_final` decimal(10,2) DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  `observaciones_cierre` text DEFAULT NULL,
+  `estado` varchar(10) NOT NULL DEFAULT 'Abierta' COMMENT 'Valores: Abierta | Cerrada',
+  `id_usuario` int(11) NOT NULL,
+  `fecha_apertura` datetime NOT NULL DEFAULT current_timestamp(),
+  `fecha_cierre` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `cargos`
 --
 
@@ -141,7 +159,7 @@ CREATE TABLE `categorias` (
   `nombre` varchar(80) NOT NULL,
   `descripcion` text DEFAULT NULL,
   `estado` tinyint(1) NOT NULL DEFAULT 1
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `categorias`
@@ -154,7 +172,11 @@ INSERT INTO `categorias` (`id_categoria`, `nombre`, `descripcion`, `estado`) VAL
 (4, 'Cuidado Personal', 'Productos de higiene y cuidado', 1),
 (5, 'Vitaminas y Suplementos', 'Vitaminas, minerales y suplementos nutricionales', 1),
 (6, 'Antiparasitarios', 'Tratamiento de parasitosis', 1),
-(7, 'Dermatológicos', 'Productos para la piel', 1);
+(7, 'Dermatológicos', 'Productos para la piel', 1),
+(8, 'Suplementos', 'Suplementos alimenticios', 1),
+(9, 'Pediatría', 'Medicamentos para niños', 1),
+(10, 'Gastroenterología', 'Medicamentos digestivos', 1),
+(11, 'Cardiología', 'Salud cardiovascular', 1);
 
 -- --------------------------------------------------------
 
@@ -183,7 +205,42 @@ INSERT INTO `clientes` (`id_cliente`, `id_tipo_doc`, `numero_documento`, `nombre
 (3, 2, '20512345678', 'Farmacia El Sol S.A.C.', NULL, '01-4567890', 'farmacia@email.com', '2026-05-05 20:38:29'),
 (4, 1, '11223344', 'Carlos Alberto Ríos Vega', NULL, '965432109', 'carlos@email.com', '2026-05-05 20:38:29'),
 (5, 1, '44332211', 'Ana Sofía Mendoza Paredes', NULL, '954321098', 'ana@email.com', '2026-05-05 20:38:29'),
-(6, 1, '48574256', 'Alee Sayes Delgado', 'Av. Ganador', '997823566', 'sayes@gmail.com', '2026-05-05 20:56:07');
+(6, 1, '48574256', 'Alee Sayes Delgado', 'Av. Ganador', '997823566', 'sayes@gmail.com', '2026-05-05 20:56:07'),
+(7, 1, '72642085', 'Alee Sayes', 'Av lima', '997823566', 'sayesalee@gmail.com', '2026-05-09 17:57:54');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `compras`
+--
+
+CREATE TABLE `compras` (
+  `id_compra` int(11) NOT NULL,
+  `id_proveedor` int(11) NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `numero_factura` varchar(20) NOT NULL,
+  `fecha_compra` date NOT NULL,
+  `subtotal` decimal(10,2) NOT NULL,
+  `igv` decimal(10,2) NOT NULL,
+  `total` decimal(10,2) NOT NULL,
+  `estado` enum('PENDIENTE','PAGADO','ANULADO') NOT NULL DEFAULT 'PENDIENTE',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `detalle_compras`
+--
+
+CREATE TABLE `detalle_compras` (
+  `id_detalle_compra` int(11) NOT NULL,
+  `id_compra` int(11) NOT NULL,
+  `id_producto` int(11) NOT NULL,
+  `cantidad` int(11) NOT NULL,
+  `precio_compra` decimal(10,2) NOT NULL,
+  `subtotal` decimal(10,2) GENERATED ALWAYS AS (`cantidad` * `precio_compra`) STORED
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -200,7 +257,7 @@ CREATE TABLE `detalle_ventas` (
   `cantidad` int(11) NOT NULL,
   `precio_unitario` decimal(10,2) NOT NULL,
   `subtotal` decimal(10,2) GENERATED ALWAYS AS (`cantidad` * `precio_unitario`) STORED
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `detalle_ventas`
@@ -228,7 +285,8 @@ INSERT INTO `detalle_ventas` (`id_detalle`, `id_venta`, `id_producto`, `id_preci
 (19, 7, 13, 13, 13, 15, 0.35),
 (20, 8, 1, 1, 1, 20, 0.50),
 (21, 8, 9, 9, 9, 12, 0.70),
-(22, 8, 5, 5, 5, 15, 0.60);
+(22, 8, 5, 5, 5, 15, 0.60),
+(23, 9, 3, 3, NULL, 1, 0.30);
 
 --
 -- Disparadores `detalle_ventas`
@@ -261,7 +319,7 @@ CREATE TABLE `empleados` (
   `fecha_ingreso` date NOT NULL DEFAULT curdate(),
   `estado` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `empleados`
@@ -287,7 +345,7 @@ CREATE TABLE `laboratorios` (
   `estado` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `laboratorios`
@@ -319,7 +377,7 @@ CREATE TABLE `lotes` (
   `stock_actual` int(11) NOT NULL DEFAULT 0,
   `stock_minimo` int(11) NOT NULL DEFAULT 20,
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `lotes`
@@ -357,7 +415,46 @@ INSERT INTO `lotes` (`id_lote`, `id_producto`, `numero_lote`, `fecha_vencimiento
 (29, 9, 'LOT-OME-VENC1', '2026-05-20', 18, 8, '2026-05-05 20:38:29'),
 (30, 13, 'LOT-VTC-VENC1', '2026-05-25', 40, 15, '2026-05-05 20:38:29'),
 (31, 7, 'LOT-LOR-VENC1', '2026-05-30', 12, 5, '2026-05-05 20:38:29'),
-(32, 11, 'LOT-MET-VENC1', '2026-06-02', 8, 3, '2026-05-05 20:38:29');
+(32, 11, 'LOT-MET-VENC1', '2026-06-02', 8, 3, '2026-05-05 20:38:29'),
+(33, 27, 'LOT-CIP-001', '2027-12-01', 150, 20, '2026-05-09 18:02:42'),
+(34, 28, 'LOT-CPX-001', '2028-06-15', 50, 10, '2026-05-09 18:02:42'),
+(35, 29, 'LOT-NAP-001', '2027-10-20', 200, 30, '2026-05-09 18:02:42'),
+(36, 30, 'LOT-APX-001', '2028-02-28', 80, 15, '2026-05-09 18:02:42'),
+(37, 31, 'LOT-KET-001', '2027-08-10', 100, 20, '2026-05-09 18:02:42'),
+(38, 32, 'LOT-LAN-001', '2027-09-05', 120, 15, '2026-05-09 18:02:42'),
+(39, 33, 'LOT-MAG-001', '2028-01-12', 300, 50, '2026-05-09 18:02:42'),
+(40, 34, 'LOT-CBF-001', '2027-11-30', 250, 40, '2026-05-09 18:02:42'),
+(41, 35, 'LOT-NEU-001', '2026-12-20', 40, 5, '2026-05-09 18:02:42'),
+(42, 36, 'LOT-ZNC-001', '2027-07-15', 180, 30, '2026-05-09 18:02:42'),
+(43, 37, 'LOT-CET-001', '2027-05-25', 220, 30, '2026-05-09 18:02:42'),
+(44, 38, 'LOT-ZYR-001', '2028-03-10', 60, 10, '2026-05-09 18:02:42'),
+(45, 39, 'LOT-ENA-001', '2027-02-14', 160, 25, '2026-05-09 18:02:42'),
+(46, 40, 'LOT-REN-001', '2027-08-20', 45, 10, '2026-05-09 18:02:42');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `movimientos_caja`
+--
+
+CREATE TABLE `movimientos_caja` (
+  `id_movimiento` int(11) NOT NULL,
+  `id_caja` int(11) DEFAULT NULL COMMENT 'FK a la caja del día (opcional)',
+  `tipo` varchar(10) NOT NULL COMMENT 'Valores: INGRESO | EGRESO',
+  `categoria` varchar(50) NOT NULL DEFAULT 'Otro',
+  `monto` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `descripcion` varchar(255) DEFAULT NULL,
+  `forma_pago` varchar(20) NOT NULL DEFAULT 'EFECTIVO' COMMENT 'Valores: EFECTIVO | TARJETA | YAPE | PLIN',
+  `id_usuario` int(11) NOT NULL,
+  `fecha_hora` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `movimientos_caja`
+--
+
+INSERT INTO `movimientos_caja` (`id_movimiento`, `id_caja`, `tipo`, `categoria`, `monto`, `descripcion`, `forma_pago`, `id_usuario`, `fecha_hora`) VALUES
+(1, NULL, 'INGRESO', 'Compra', 6600.00, 'fefd', 'TARJETA', 1, '2026-05-09 17:58:44');
 
 -- --------------------------------------------------------
 
@@ -437,7 +534,21 @@ INSERT INTO `productos` (`id_producto`, `codigo_barra`, `nombre_comercial`, `pri
 (23, '7501234000023', 'Hidrocortisona Crema 1%', 'Hidrocortisona', '1%', 3, 7, 5, 0, NULL, 1, '2026-05-05 20:38:29', '2026-05-05 20:38:29'),
 (24, '7501234000024', 'Betametasona Crema 0.05%', 'Betametasona', '0.05%', 2, 7, 5, 1, NULL, 1, '2026-05-05 20:38:29', '2026-05-05 20:38:29'),
 (25, '7501234000025', 'Salbutamol Inhalador', 'Salbutamol', '100mcg', 1, 2, 6, 1, NULL, 1, '2026-05-05 20:38:29', '2026-05-05 20:38:29'),
-(26, '76551312320230', 'Clorofemamina', 'Cloro', '150mg', 8, 1, 6, 0, 'xd', 1, '2026-05-05 21:00:31', '2026-05-05 21:00:31');
+(26, '76551312320230', 'Clorofemamina', 'Cloro', '150mg', 8, 1, 6, 0, 'xd', 1, '2026-05-05 21:00:31', '2026-05-05 21:00:31'),
+(27, '7750123000271', 'Ciprofloxacino 500mg', 'Ciprofloxacino', '500mg', 1, 1, 1, 1, 'Antibiótico de amplio espectro', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(28, '7750123000288', 'Ciproxina 500mg', 'Ciprofloxacino', '500mg', 4, 1, 1, 1, 'Ciprofloxacino de marca (Abbott)', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(29, '7750123000295', 'Naproxeno 500mg', 'Naproxeno', '500mg', 1, 3, 1, 0, 'Alivio de inflamación y dolor', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(30, '7750123000301', 'Apronax 550mg', 'Naproxeno Sódico', '550mg', 4, 3, 1, 0, 'Naproxeno de marca potente', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(31, '7750123000318', 'Ketorolaco 10mg', 'Ketorolaco Trometamol', '10mg', 1, 2, 1, 1, 'Analgésico potente', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(32, '7750123000325', 'Lansoprazol 30mg', 'Lansoprazol', '30mg', 2, 10, 4, 1, 'Inhibidor de bomba de protones', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(33, '7750123000332', 'Magnesia Bisurada', 'Hidróxido de Magnesio', 'Pastilla', 3, 10, 1, 0, 'Antiácido masticable', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(34, '7750123000349', 'Complejo B Forte', 'Vitamina B1, B6, B12', 'Forte', 1, 5, 1, 0, 'Suplemento vitamínico B', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(35, '7750123000356', 'Neurobion 5000', 'Vitamina B1, B6, B12', '5000', 4, 5, 3, 1, 'Inyectable de complejo B potente', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(36, '7750123000363', 'Zinc 20mg', 'Sulfato de Zinc', '20mg', 2, 8, 1, 0, 'Suplemento de Zinc', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(37, '7750123000370', 'Cetirizina 10mg', 'Cetirizina', '10mg', 1, 2, 1, 0, 'Antihistamínico', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(38, '7750123000387', 'Zyrtec 10mg', 'Cetirizina', '10mg', 4, 2, 1, 0, 'Cetirizina de marca', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(39, '7750123000394', 'Enalapril 10mg', 'Enalapril', '10mg', 1, 11, 1, 1, 'Antihipertensivo', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42'),
+(40, '7750123000400', 'Renitec 10mg', 'Enalapril', '10mg', 4, 11, 1, 1, 'Enalapril de marca', 1, '2026-05-09 18:02:42', '2026-05-09 18:02:42');
 
 -- --------------------------------------------------------
 
@@ -452,7 +563,7 @@ CREATE TABLE `producto_precios` (
   `cantidad_equivalente` int(11) NOT NULL DEFAULT 1,
   `precio_venta` decimal(10,2) NOT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT 1
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `producto_precios`
@@ -483,7 +594,57 @@ INSERT INTO `producto_precios` (`id_precio`, `id_producto`, `id_unidad`, `cantid
 (22, 22, 1, 1, 5.00, 1),
 (23, 23, 1, 1, 3.50, 1),
 (24, 24, 1, 1, 6.00, 1),
-(25, 25, 1, 1, 18.00, 1);
+(25, 25, 1, 1, 18.00, 1),
+(26, 27, 1, 1, 0.80, 1),
+(27, 28, 1, 1, 2.50, 1),
+(28, 29, 1, 1, 0.50, 1),
+(29, 30, 1, 1, 1.80, 1),
+(30, 31, 1, 1, 0.60, 1),
+(31, 32, 1, 1, 1.20, 1),
+(32, 33, 1, 1, 0.30, 1),
+(33, 34, 1, 1, 0.50, 1),
+(34, 35, 1, 1, 15.00, 1),
+(35, 36, 1, 1, 0.40, 1),
+(36, 37, 1, 1, 0.40, 1),
+(37, 38, 1, 1, 2.20, 1),
+(38, 39, 1, 1, 0.30, 1),
+(39, 40, 1, 1, 1.50, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `proveedores`
+--
+
+CREATE TABLE `proveedores` (
+  `id_proveedor` int(11) NOT NULL,
+  `ruc` char(11) NOT NULL,
+  `razon_social` varchar(200) NOT NULL,
+  `nombre_comercial` varchar(200) DEFAULT NULL,
+  `tipo` varchar(50) DEFAULT 'Laboratorio',
+  `direccion` varchar(255) DEFAULT NULL,
+  `distrito` varchar(100) DEFAULT NULL,
+  `ciudad` varchar(100) DEFAULT 'Lima',
+  `telefono` varchar(20) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `web` varchar(150) DEFAULT NULL,
+  `contacto_nombre` varchar(150) DEFAULT NULL,
+  `contacto_cargo` varchar(100) DEFAULT NULL,
+  `contacto_telefono` varchar(20) DEFAULT NULL,
+  `condicion_pago` varchar(50) DEFAULT 'Contado',
+  `notas` text DEFAULT NULL,
+  `estado` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `proveedores`
+--
+
+INSERT INTO `proveedores` (`id_proveedor`, `ruc`, `razon_social`, `nombre_comercial`, `tipo`, `direccion`, `distrito`, `ciudad`, `telefono`, `email`, `web`, `contacto_nombre`, `contacto_cargo`, `contacto_telefono`, `condicion_pago`, `notas`, `estado`, `created_at`, `updated_at`) VALUES
+(1, '20123456789', 'Droguería Pharma S.A.C.', 'Pharma Distribuidores', 'Droguería', NULL, NULL, 'Lima', '988776655', 'ventas@pharma.com', NULL, 'Roberto Carlos', NULL, NULL, 'Contado', NULL, 1, '2026-05-09 17:39:09', '2026-05-09 17:39:09'),
+(2, '20987654321', 'Laboratorios Portugal S.R.L.', 'Portugal Pharma', 'Laboratorio', NULL, NULL, 'Lima', '955443322', 'contacto@portugal.pe', NULL, 'Elena Torres', NULL, NULL, 'Contado', NULL, 1, '2026-05-09 17:39:09', '2026-05-09 17:39:09');
 
 -- --------------------------------------------------------
 
@@ -496,14 +657,14 @@ CREATE TABLE `tipos_comprobante` (
   `nombre` varchar(20) NOT NULL,
   `serie_actual` char(4) NOT NULL,
   `correlativo_actual` int(11) NOT NULL DEFAULT 0
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_comprobante`
 --
 
 INSERT INTO `tipos_comprobante` (`id_tipo_comprobante`, `nombre`, `serie_actual`, `correlativo_actual`) VALUES
-(1, 'BOLETA', 'B001', 7),
+(1, 'BOLETA', 'B001', 8),
 (2, 'FACTURA', 'F001', 1);
 
 -- --------------------------------------------------------
@@ -565,7 +726,7 @@ CREATE TABLE `usuarios` (
   `ultimo_acceso` datetime DEFAULT NULL,
   `estado` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `usuarios`
@@ -597,7 +758,7 @@ CREATE TABLE `ventas` (
   `total` decimal(10,2) NOT NULL DEFAULT 0.00,
   `estado` enum('ACTIVA','ANULADA') NOT NULL DEFAULT 'ACTIVA',
   `observaciones` text DEFAULT NULL
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `ventas`
@@ -611,7 +772,8 @@ INSERT INTO `ventas` (`id_venta`, `id_tipo_comprobante`, `serie`, `correlativo`,
 (5, 2, 'F001', 1, '2026-04-10 20:38:29', 3, 1, 'TRANSFERENCIA', 200.00, 169.49, 30.51, 200.00, 'ACTIVA', NULL),
 (6, 1, 'B001', 5, '2026-03-31 20:38:29', 4, 1, 'CONTADO', 45.00, 38.14, 6.86, 45.00, 'ACTIVA', NULL),
 (7, 1, 'B001', 6, '2026-03-16 20:38:29', 2, 1, 'CONTADO', 35.00, 29.66, 5.34, 35.00, 'ACTIVA', NULL),
-(8, 1, 'B001', 7, '2026-02-24 20:38:29', 5, 1, 'CONTADO', 55.00, 46.61, 8.39, 55.00, 'ACTIVA', NULL);
+(8, 1, 'B001', 7, '2026-02-24 20:38:29', 5, 1, 'CONTADO', 55.00, 46.61, 8.39, 55.00, 'ACTIVA', NULL),
+(9, 1, 'B001', 8, '2026-05-09 17:58:20', 7, 1, 'CONTADO', 0.30, 0.25, 0.05, 0.30, 'ACTIVA', NULL);
 
 --
 -- Disparadores `ventas`
@@ -691,6 +853,19 @@ CREATE TABLE `v_productos_criticos` (
 -- --------------------------------------------------------
 
 --
+-- Estructura Stand-in para la vista `v_resumen_caja`
+-- (Véase abajo para la vista actual)
+--
+CREATE TABLE `v_resumen_caja` (
+`fecha` date
+,`ingresos` decimal(32,2)
+,`egresos` decimal(32,2)
+,`balance` decimal(32,2)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Estructura Stand-in para la vista `v_stock_alertas`
 -- (Véase abajo para la vista actual)
 --
@@ -740,6 +915,15 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 -- --------------------------------------------------------
 
 --
+-- Estructura para la vista `v_resumen_caja`
+--
+DROP TABLE IF EXISTS `v_resumen_caja`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_resumen_caja`  AS SELECT cast(`movimientos_caja`.`fecha_hora` as date) AS `fecha`, sum(case when `movimientos_caja`.`tipo` = 'INGRESO' then `movimientos_caja`.`monto` else 0 end) AS `ingresos`, sum(case when `movimientos_caja`.`tipo` = 'EGRESO' then `movimientos_caja`.`monto` else 0 end) AS `egresos`, sum(case when `movimientos_caja`.`tipo` = 'INGRESO' then `movimientos_caja`.`monto` else -`movimientos_caja`.`monto` end) AS `balance` FROM `movimientos_caja` GROUP BY cast(`movimientos_caja`.`fecha_hora` as date) ;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura para la vista `v_stock_alertas`
 --
 DROP TABLE IF EXISTS `v_stock_alertas`;
@@ -758,6 +942,13 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 -- Índices para tablas volcadas
 --
+
+--
+-- Indices de la tabla `cajas`
+--
+ALTER TABLE `cajas`
+  ADD PRIMARY KEY (`id_caja`),
+  ADD KEY `fk_caja_usuario` (`id_usuario`);
 
 --
 -- Indices de la tabla `cargos`
@@ -780,6 +971,22 @@ ALTER TABLE `clientes`
   ADD PRIMARY KEY (`id_cliente`),
   ADD UNIQUE KEY `uq_cli_doc` (`id_tipo_doc`,`numero_documento`),
   ADD KEY `idx_cli_doc` (`numero_documento`);
+
+--
+-- Indices de la tabla `compras`
+--
+ALTER TABLE `compras`
+  ADD PRIMARY KEY (`id_compra`),
+  ADD KEY `fk_compra_prov` (`id_proveedor`),
+  ADD KEY `fk_compra_usr` (`id_usuario`);
+
+--
+-- Indices de la tabla `detalle_compras`
+--
+ALTER TABLE `detalle_compras`
+  ADD PRIMARY KEY (`id_detalle_compra`),
+  ADD KEY `fk_dc_compra` (`id_compra`),
+  ADD KEY `fk_dc_prod` (`id_producto`);
 
 --
 -- Indices de la tabla `detalle_ventas`
@@ -816,6 +1023,15 @@ ALTER TABLE `lotes`
   ADD KEY `idx_lote_venc` (`fecha_vencimiento`);
 
 --
+-- Indices de la tabla `movimientos_caja`
+--
+ALTER TABLE `movimientos_caja`
+  ADD PRIMARY KEY (`id_movimiento`),
+  ADD KEY `fk_mov_caja` (`id_caja`),
+  ADD KEY `fk_mov_usuario` (`id_usuario`),
+  ADD KEY `idx_fecha_hora` (`fecha_hora`);
+
+--
 -- Indices de la tabla `presentaciones`
 --
 ALTER TABLE `presentaciones`
@@ -842,6 +1058,13 @@ ALTER TABLE `producto_precios`
   ADD PRIMARY KEY (`id_precio`),
   ADD UNIQUE KEY `uq_prod_unidad` (`id_producto`,`id_unidad`),
   ADD KEY `fk_pp_unidad` (`id_unidad`);
+
+--
+-- Indices de la tabla `proveedores`
+--
+ALTER TABLE `proveedores`
+  ADD PRIMARY KEY (`id_proveedor`),
+  ADD UNIQUE KEY `ruc` (`ruc`);
 
 --
 -- Indices de la tabla `tipos_comprobante`
@@ -889,6 +1112,12 @@ ALTER TABLE `ventas`
 --
 
 --
+-- AUTO_INCREMENT de la tabla `cajas`
+--
+ALTER TABLE `cajas`
+  MODIFY `id_caja` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `cargos`
 --
 ALTER TABLE `cargos`
@@ -898,37 +1127,55 @@ ALTER TABLE `cargos`
 -- AUTO_INCREMENT de la tabla `categorias`
 --
 ALTER TABLE `categorias`
-  MODIFY `id_categoria` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_categoria` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `clientes`
 --
 ALTER TABLE `clientes`
-  MODIFY `id_cliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id_cliente` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT de la tabla `compras`
+--
+ALTER TABLE `compras`
+  MODIFY `id_compra` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `detalle_compras`
+--
+ALTER TABLE `detalle_compras`
+  MODIFY `id_detalle_compra` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_ventas`
 --
 ALTER TABLE `detalle_ventas`
-  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_detalle` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT de la tabla `empleados`
 --
 ALTER TABLE `empleados`
-  MODIFY `id_empleado` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_empleado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `laboratorios`
 --
 ALTER TABLE `laboratorios`
-  MODIFY `id_laboratorio` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_laboratorio` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `lotes`
 --
 ALTER TABLE `lotes`
-  MODIFY `id_lote` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_lote` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+
+--
+-- AUTO_INCREMENT de la tabla `movimientos_caja`
+--
+ALTER TABLE `movimientos_caja`
+  MODIFY `id_movimiento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `presentaciones`
@@ -940,19 +1187,25 @@ ALTER TABLE `presentaciones`
 -- AUTO_INCREMENT de la tabla `productos`
 --
 ALTER TABLE `productos`
-  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT de la tabla `producto_precios`
 --
 ALTER TABLE `producto_precios`
-  MODIFY `id_precio` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_precio` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+
+--
+-- AUTO_INCREMENT de la tabla `proveedores`
+--
+ALTER TABLE `proveedores`
+  MODIFY `id_proveedor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `tipos_comprobante`
 --
 ALTER TABLE `tipos_comprobante`
-  MODIFY `id_tipo_comprobante` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_tipo_comprobante` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `tipo_documento_identidad`
@@ -970,17 +1223,23 @@ ALTER TABLE `unidades_medida`
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `ventas`
 --
 ALTER TABLE `ventas`
-  MODIFY `id_venta` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_venta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- Restricciones para tablas volcadas
 --
+
+--
+-- Filtros para la tabla `cajas`
+--
+ALTER TABLE `cajas`
+  ADD CONSTRAINT `fk_caja_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`);
 
 --
 -- Filtros para la tabla `clientes`
@@ -1008,6 +1267,13 @@ ALTER TABLE `empleados`
 --
 ALTER TABLE `lotes`
   ADD CONSTRAINT `fk_lote_prod` FOREIGN KEY (`id_producto`) REFERENCES `productos` (`id_producto`);
+
+--
+-- Filtros para la tabla `movimientos_caja`
+--
+ALTER TABLE `movimientos_caja`
+  ADD CONSTRAINT `fk_mov_caja` FOREIGN KEY (`id_caja`) REFERENCES `cajas` (`id_caja`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_mov_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`);
 
 --
 -- Filtros para la tabla `productos`
